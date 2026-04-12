@@ -12,8 +12,8 @@ return new class extends Migration {
     {
         Schema::create('contato', function (Blueprint $table) {
             $table->id();
-            $table->char('ddd_telefone', 2)->nullable();
-            $table->string('telefone', 9)->nullable();
+            // $table->char('ddd_telefone', 2)->nullable();
+            // $table->string('telefone', 9)->nullable();
             $table->char('ddd_celular', 2);
             $table->string('celular', 9);
             $table->string('email')->unique();

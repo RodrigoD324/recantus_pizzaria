@@ -36,7 +36,7 @@ $(function () {
                 };
                 if (response.message == "UserAuthenticated") {
                     spinner.hide();
-                    return window.location.href = "/chat";
+                    return window.location.href = "/admin/users";
                 };
             },
             function (error) {

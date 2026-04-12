@@ -2,17 +2,17 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\HasName;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['login', 'password'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements HasName
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -49,5 +49,15 @@ class User extends Authenticatable
     public function username()
     {
         return 'login';
+    }
+
+    public function getFilamentName(): string
+    {
+        return (string) ($this->login ?? $this->id ?? 'Usuário Sem Nome');
+    }
+
+    public function pessoa()
+    {
+        return $this->belongsTo(Pessoa::class, 'id_pessoa');
     }
 }
