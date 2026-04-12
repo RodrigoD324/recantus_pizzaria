@@ -29,11 +29,11 @@ class Pessoa extends Model
 
     public function contato()
     {
-        return $this->belongsTo(Contato::class, 'id_contato');
+        return $this->belongsTo(Contato::class, 'id_contato', 'id');
     }
 
     public function endereco()
     {
-        return $this->belongsTo(Endereco::class, 'id_endereco');
+        return $this->belongsTo(Endereco::class, 'id_endereco', 'id');
     }
 }

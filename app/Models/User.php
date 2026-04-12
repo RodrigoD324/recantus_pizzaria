@@ -60,4 +60,14 @@ class User extends Authenticatable implements HasName
     {
         return $this->belongsTo(Pessoa::class, 'id_pessoa');
     }
+
+    public function contato()
+    {
+        return $this->hasOneThrough(Contato::class, Pessoa::class, 'id', 'id_pessoa', 'id_pessoa', 'id');
+    }
+
+    public function endereco()
+    {
+        return $this->hasOneThrough(Endereco::class, Pessoa::class, 'id', 'id_pessoa', 'id_pessoa', 'id');
+    }
 }
