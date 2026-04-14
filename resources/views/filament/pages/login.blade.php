@@ -17,7 +17,7 @@
                     </p>
                 </div>
 
-                <x-filament-panels::form wire:submit="authenticate">
+                <x-filament-panels::form wire:submit="authenticate" class="mt-6">
                     {{ $this->form }}
 
                     <x-filament-panels::form.actions

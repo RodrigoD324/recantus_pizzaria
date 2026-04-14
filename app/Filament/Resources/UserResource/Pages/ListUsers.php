@@ -22,9 +22,9 @@ class ListUsers extends ListRecords
     public function getTabs(): array
     {
         return [
-            'todos' => Tab::make('Todos'),
-            'ativos' => Tab::make('Ativados')->modifyQueryUsing(fn(Builder $query) => $query->whereNull('id_cancelamento')),
-            'desativados' => Tab::make('Desativados')->modifyQueryUsing(fn(Builder $query) => $query->whereNotNull('id_cancelamento')),
+            // 'todos' => Tab::make('Todos'),
+            // 'ativos' => Tab::make('Ativados')->modifyQueryUsing(fn(Builder $query) => $query->whereNull('id_cancelamento')),
+            // 'desativados' => Tab::make('Desativados')->modifyQueryUsing(fn(Builder $query) => $query->whereNotNull('id_cancelamento')),
         ];
     }
 }

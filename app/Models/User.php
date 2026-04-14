@@ -26,6 +26,7 @@ class User extends Authenticatable implements HasName
         'id_usuario_tipo',
         'login',
         'password',
+        'id_cancelamento'
     ];
 
     protected $hidden = [

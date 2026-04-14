@@ -17,14 +17,16 @@ class Login extends BaseLogin
     {
         return $form
             ->schema([
-                TextInput::make('cpf') // Nome do campo deve ser 'cpf'
+                TextInput::make('cpf') 
                     ->label('CPF')
+                    ->placeholder('000.000.000-00')
                     ->mask('999.999.999-99')
                     ->required()
                     ->autocomplete()
                     ->autofocus(),
                 TextInput::make('password')
                     ->label('Senha')
+                    ->placeholder('********')
                     ->password()
                     ->required(),
             ])

@@ -21,6 +21,7 @@ use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class UserResource extends Resource
@@ -66,6 +67,7 @@ class UserResource extends Resource
 
                                 TextInput::make('pessoa.cpf')
                                     ->label('CPF')
+                                    // ->unique()
                                     ->placeholder('000.000.000-00')
                                     ->mask('999.999.999-99')
                                     ->required()
@@ -209,7 +211,7 @@ class UserResource extends Resource
                             ->required()
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set, $state) {
-                                if ($state == 2) { // Cliente
+                                if ($state == 2) {
                                     $cpf = $get('pessoa.cpf');
                                     $cpfLimpio = preg_replace('/\D/', '', $cpf ?? '');
                                     $set('login', $cpfLimpio);
@@ -238,6 +240,27 @@ class UserResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->filters([
+                SelectFilter::make('id_usuario_tipo')
+                    ->label('Tipo de Usuário')
+                    ->options([
+                        1   =>  'Admin',
+                        2   =>  'Cliente'
+                    ]),
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'ativo' => 'Ativado',
+                        'desativado' => 'Desativado',
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        return match ($data['value']) {
+                            'ativo' => $query->whereNull('id_cancelamento'),
+                            'desativado' => $query->whereNotNull('id_cancelamento'),
+                            default => $query,
+                        };
+                    })
+            ])
             ->columns([
                 TextColumn::make('pessoa.nome')
                     ->label('Nome')
