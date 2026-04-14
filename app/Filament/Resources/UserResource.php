@@ -28,9 +28,11 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
+    protected static ?string $navigationGroup = 'Gestão';
+
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
-    protected static ?string $navigationLabel = 'Gestão de Usuários';
+    protected static ?string $navigationLabel = 'Usuários';
 
     protected static ?string $breadcrumb = 'Usuários';
 
@@ -291,7 +293,7 @@ class UserResource extends Resource
                     ->color(fn($state) => $state === 'Ativo' ? 'success' : 'danger'),
             ])
             ->actions([
-                EditAction::make(),
+                // EditAction::make(),
                 Action::make('cancelar')
                     ->label('Desativar')
                     ->icon('heroicon-o-trash')
