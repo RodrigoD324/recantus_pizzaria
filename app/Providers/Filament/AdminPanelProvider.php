@@ -26,15 +26,21 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->default()
+            ->maxContentWidth(\Filament\Support\Enums\MaxWidth::Full)
+            ->sidebarCollapsibleOnDesktop()
             ->id('admin')
             ->path('admin')
-            ->font('Inter')
-            ->brandName("Recantu's")
+            ->brandLogo(asset('assets/imgs/recantus_logo.png'))
+            ->brandLogoHeight('160px')
+            ->darkMode(false)
             ->favicon(asset('assets/icons/pizza.ico'))
             ->login(Login::class)
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Orange,
+                'gray' => Color::Stone,
             ])
+            ->font('Poppins')
+            // ->viteTheme('resources/css/filament/admin/theme.css')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -61,38 +67,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 'panels::head.end',
-                fn(): string => Blade::render("
-            <style>
-                /* Estilização da Sidebar */
-                .fi-sidebar {
-                    background-color: #1e293b !important;
-                    border-right: 1px solid #334155;
-                }
-
-                /* Cor do texto dos itens do menu */
-                .fi-sidebar-item-label, .fi-sidebar-group-label {
-                    color: #f1f5f9 !important;
-                }
-
-                /* Cor dos ícones */
-                .fi-sidebar-item-icon {
-                    color: #94a3b8 !important;
-                }
-
-                /* Efeito de Hover e Item Ativo */
-                .fi-sidebar-item-button:hover, 
-                .fi-sidebar-item-active,
-                .fi-sidebar-item-button.fi-active {
-                    background-color: #334155 !important;
-                }
-                
-                /* Logo/Nome da marca no topo da sidebar */
-                .fi-sidebar-header {
-                    background-color: #0f172a !important;
-                    border-bottom: 1px solid #1e293b;
-                }
-            </style>
-        "),
+                fn(): string => Blade::render('<link rel="stylesheet" href="{{ asset(\'css/app/custom-theme.css\') }}">'),
             );
     }
 }

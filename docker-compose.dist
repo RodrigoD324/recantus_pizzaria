@@ -5,15 +5,6 @@ services:
     container_name: name
     volumes:
       - .:/var/www/webdev
-    
-  name_node:
-    image: node:latest
-    container_name: name_node
-    working_dir: /var/www/webdev
-    volumes:
-      - .:/var/www/webdev
-      - /var/www/webdev/node_modules
-    command: tail -f /dev/null
 
   name_http:
     image: nginx:latest
@@ -31,14 +22,17 @@ services:
       - name
 
   name_postgres:
-    image: postgres:13
+    image: postgres:15
     restart: always
     container_name: name_postgres
     environment:
-      POSTGRES_DB: "db"
-      POSTGRES_PASSWORD: "postgres"
-      POSTGRES_HOST_AUTH_METHOD: "trust"
+      POSTGRES_DB: db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: senha_forte
     volumes:
-      - ./postgres:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+
+volumes:
+  postgres_data:

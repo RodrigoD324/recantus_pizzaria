@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
-use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;

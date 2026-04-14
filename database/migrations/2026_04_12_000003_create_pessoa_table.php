@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->foreignId('id_endereco')->nullable()->constrained('endereco');
             $table->foreignId('id_contato')->nullable()->constrained('contato');
             $table->string('nome', 150);
-            $table->string('cpf', 11)->unique();
+            $table->string('cpf', 11)->unique()->nullable();
             $table->foreignId('id_cancelamento')->nullable()->constrained('cancelamento');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();

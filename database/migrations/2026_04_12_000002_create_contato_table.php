@@ -16,7 +16,7 @@ return new class extends Migration {
             // $table->string('telefone', 9)->nullable();
             $table->char('ddd_celular', 2);
             $table->string('celular', 9);
-            $table->string('email')->unique();
+            $table->string('email')->unique()->nullable();
             $table->foreignId('id_cancelamento')->nullable()->constrained('cancelamento');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();

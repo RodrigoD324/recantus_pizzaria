@@ -30,7 +30,7 @@ class UserResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
     protected static ?string $navigationLabel = 'Usuários';
     protected static ?string $breadcrumb = 'Usuários';
-    protected static ?string $slug = 'usuarios'; 
+    protected static ?string $slug = 'usuarios';
 
     public static function getPluralModelLabel(): string
     {
@@ -53,7 +53,6 @@ class UserResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Group::make()
-                    // ->relationship('pessoa')
                     ->schema([
                         Section::make('Informações Pessoais')
                             ->schema([
@@ -61,16 +60,32 @@ class UserResource extends Resource
                                     ->label('Nome Completo')
                                     ->placeholder('Ex: João Silva Sauro')
                                     ->required()
-                                    ->columnSpan(2),
+                                    ->columnSpan(2)
+                                    ->validationMessages([
+                                        'required' => 'Ei, você esqueceu de preencher o Nome Completo!',
+                                    ]),
 
                                 TextInput::make('pessoa.cpf')
                                     ->label('CPF')
-                                    // ->unique()
                                     ->placeholder('000.000.000-00')
                                     ->mask('999.999.999-99')
-                                    ->required()
                                     ->live(onBlur: true)
-                                    ->dehydrateStateUsing(fn(string $state): string => preg_replace('/\D/', '', $state))
+
+                                    // 🔥 GARANTE QUE O VALOR JÁ ESTÁ LIMPO NO STATE
+                                    ->dehydrateStateUsing(
+                                        fn(?string $state) =>
+                                        filled($state) ? preg_replace('/\D/', '', $state) : null
+                                    )
+
+                                    ->unique(
+                                        table: \App\Models\Pessoa::class,
+                                        column: 'cpf',
+                                        ignoreRecord: true
+                                    )
+
+                                    ->validationMessages([
+                                        'unique' => 'Já existe uma pessoa cadastrada com este CPF.',
+                                    ])
                                     ->afterStateUpdated(function (Get $get, Set $set, $state) {
                                         if ($get('../../id_usuario_tipo') == 2) {
                                             $cpfApenasNumeros = preg_replace('/\D/', '', $state);
@@ -89,21 +104,36 @@ class UserResource extends Resource
                                             ->label('E-mail')
                                             ->placeholder('joao@exemplo.com')
                                             ->email()
-                                            ->required()
-                                            ->columnSpan(2),
+                                            ->unique(
+                                                table: \App\Models\Contato::class,
+                                                column: 'email',
+                                                ignoreRecord: true
+                                            )
+                                            // ->required()
+                                            ->columnSpan(2)
+                                            ->validationMessages([
+                                                'unique' => 'Já existe um usuário cadastrado com este e-mail.',
+                                                // 'required' => 'Ei, você esqueceu de preencher o E-mail!',
+                                            ]),
 
                                         TextInput::make('pessoa.contato.ddd_celular')
                                             ->label('DDD')
                                             ->placeholder('11')
                                             ->maxLength(2)
-                                            ->required(),
+                                            ->required()
+                                            ->validationMessages([
+                                                'required' => 'Ei, você esqueceu de preencher o DDD!',
+                                            ]),
 
                                         TextInput::make('pessoa.contato.celular')
                                             ->label('Celular')
                                             ->placeholder('988887777')
                                             ->mask('999999999')
                                             ->maxLength(9)
-                                            ->required(),
+                                            ->required()
+                                            ->validationMessages([
+                                                'required' => 'Ei, você esqueceu de preencher o Celular!',
+                                            ]),
                                     ])->columns(4),
                             ]),
 
@@ -135,18 +165,27 @@ class UserResource extends Resource
                                                     $set('pessoa.endereco.estado', $data['uf'] ?? '');
                                                 } catch (\Exception $e) {
                                                 }
-                                            }),
+                                            })
+                                            ->validationMessages([
+                                                'required' => 'Ei, você esqueceu de preencher o CEP!',
+                                            ]),
 
                                         TextInput::make('pessoa.endereco.logradouro')
                                             ->label('Logradouro')
                                             ->placeholder('Ex: Rua das Flores')
                                             ->required()
-                                            ->columnSpan(2),
+                                            ->columnSpan(2)
+                                            ->validationMessages([
+                                                'required' => 'Ei, você esqueceu de preencher o Logradouro!',
+                                            ]),
 
                                         TextInput::make('pessoa.endereco.numero')
                                             ->label('Número')
                                             ->placeholder('123')
-                                            ->required(),
+                                            ->required()
+                                            ->validationMessages([
+                                                'required' => 'Ei, você esqueceu de preencher o Número!',
+                                            ]),
 
                                         TextInput::make('pessoa.endereco.complemento')
                                             ->label('Complemento')
@@ -155,12 +194,18 @@ class UserResource extends Resource
                                         TextInput::make('pessoa.endereco.bairro')
                                             ->label('Bairro')
                                             ->placeholder('Ex: Centro')
-                                            ->required(),
+                                            ->required()
+                                            ->validationMessages([
+                                                'required' => 'Ei, você esqueceu de preencher o Bairro!',
+                                            ]),
 
                                         TextInput::make('pessoa.endereco.municipio')
                                             ->label('Município')
                                             ->placeholder('Ex: São Paulo')
-                                            ->required(),
+                                            ->required()
+                                            ->validationMessages([
+                                                'required' => 'Ei, você esqueceu de preencher o Município!',
+                                            ]),
 
                                         Select::make('pessoa.endereco.estado')
                                             ->label('Estado')
@@ -195,7 +240,10 @@ class UserResource extends Resource
                                             ])
                                             ->searchable()
                                             ->placeholder('Selecione um estado')
-                                            ->required(),
+                                            ->required()
+                                            ->validationMessages([
+                                                'required' => 'Ei, você esqueceu de selecionar o Estado!',
+                                            ]),
                                     ])->columns(3),
                             ]),
                     ])->columnSpanFull(),
@@ -215,14 +263,20 @@ class UserResource extends Resource
                                     $set('login', $cpfLimpio);
                                     $set('password', $cpfLimpio);
                                 }
-                            }),
+                            })
+                            ->validationMessages([
+                                'required' => 'Ei, você esqueceu de selecionar o Tipo de Usuário!',
+                            ]),
 
                         TextInput::make('login')
                             ->label('Login')
                             ->placeholder('usuario.exemplo')
                             ->required()
                             ->disabled(fn(Get $get) => $get('id_usuario_tipo') == 2)
-                            ->dehydrated(),
+                            ->dehydrated()
+                            ->validationMessages([
+                                'required' => 'Ei, você esqueceu de preencher o Login!',
+                            ]),
 
                         TextInput::make('password')
                             ->label('Senha')
@@ -230,7 +284,10 @@ class UserResource extends Resource
                             ->password()
                             ->required(fn($context, Get $get) => $context === 'create' && $get('id_usuario_tipo') != 2)
                             ->disabled(fn(Get $get) => $get('id_usuario_tipo') == 2)
-                            ->dehydrated(fn($state) => filled($state)),
+                            ->dehydrated(fn($state) => filled($state))
+                            ->validationMessages([
+                                'required' => 'Ei, você esqueceu de preencher a Senha!',
+                            ]),
                     ])->columns(3),
             ]);
     }
@@ -242,8 +299,8 @@ class UserResource extends Resource
                 SelectFilter::make('id_usuario_tipo')
                     ->label('Tipo de Usuário')
                     ->options([
-                        1   =>  'Admin',
-                        2   =>  'Cliente'
+                        1 => 'Admin',
+                        2 => 'Cliente'
                     ]),
                 SelectFilter::make('status')
                     ->label('Status')

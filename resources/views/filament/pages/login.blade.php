@@ -9,11 +9,12 @@
         <div class="w-full lg:w-1/3 flex flex-col justify-center px-8 bg-white dark:bg-gray-900">
             <div class="mx-auto w-full max-w-md">
                 <div class="text-center mb-8">
-                    <h1 class="text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
+                    <!-- <h1 class="text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
                         Pizzaria Recantu's
-                    </h1>
-                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        Monitore e gerencie sua pizzaria de forma eficiente.
+                    </h1> -->
+                    <img src="{{ asset('assets/imgs/recantus_logo.png') }}" alt="Logo" class="mx-auto h-[180px] w-auto">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                        Monitore e gerencie sua pizzaria de forma prática.
                     </p>
                 </div>
 

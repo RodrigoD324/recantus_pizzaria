@@ -16,13 +16,10 @@ class CreateUser extends CreateRecord
     protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
     {
         return DB::transaction(function () use ($data) {
-            // Criar Contato
             $contato = \App\Models\Contato::create($data['pessoa']['contato']);
 
-            // Criar Endereço
             $endereco = \App\Models\Endereco::create($data['pessoa']['endereco']);
 
-            // Criar Pessoa
             $pessoa = \App\Models\Pessoa::create([
                 'nome' => $data['pessoa']['nome'],
                 'cpf' => $data['pessoa']['cpf'],
@@ -30,12 +27,11 @@ class CreateUser extends CreateRecord
                 'id_endereco' => $endereco->id,
             ]);
 
-            // Criar o Usuário com o ID da pessoa
             return \App\Models\User::create([
                 'id_pessoa' => $pessoa->id,
                 'id_usuario_tipo' => $data['id_usuario_tipo'],
                 'login' => $data['login'],
-                'password' => $data['password'], // O model User já faz o hash
+                'password' => $data['password'], 
             ]);
         });
     }

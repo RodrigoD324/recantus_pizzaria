@@ -1,0 +1,120 @@
+.fi-layout {
+    background-color: #FDFCF8 !important;
+}
+
+.fi-section, 
+.fi-ta-ctn, 
+.fi-ta-empty-state,
+.fi-modal-window {
+    background-color: #FFFFFF !important;
+    border: 1px solid #E5E1DA !important; 
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.03), 0 4px 6px -4px rgba(0, 0, 0, 0.03) !important;
+    border-radius: 16px !important;
+    overflow: hidden;
+}
+
+.fi-ta-header-ctn {
+    background-color: #FAFAF7 !important;
+    border-bottom: 1px solid #E5E1DA !important;
+}
+
+.fi-ta-header-cell-label {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+    color: #716B64 !important;
+}
+
+.fi-ta-row:hover {
+    background-color: #FDFCF8 !important;
+    transition: background-color 0.2s ease;
+}
+
+.fi-sidebar {
+    background-color: #FFFFFF !important;
+    border-right: 1px solid #E5E1DA !important;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.02) !important;
+}
+
+.fi-sidebar-header {
+    height: auto !important;
+    background-color: #FFFFFF !important;
+    border-bottom: 1px solid #F3F1ED !important;
+}
+
+.fi-sidebar-item-button {
+    border-radius: 10px !important;
+    margin: 4px 8px !important;
+    transition: all 0.2s ease !important;
+}
+
+.fi-sidebar-item-active {
+    background-color: rgba(249, 115, 22, 0.1) !important; 
+    color: #D97706 !important;
+}
+
+.fi-sidebar-item-active .fi-sidebar-item-icon {
+    color: #D97706 !important;
+}
+
+.fi-btn {
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+}
+
+.fi-btn-color-primary {
+    box-shadow: 0 4px 10px rgba(249, 115, 22, 0.2) !important;
+}
+
+.fi-btn-color-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 15px rgba(249, 115, 22, 0.3) !important;
+}
+
+.fi-fo-wizard-header-step-icon,
+.fi-fo-text-input, 
+.fi-fo-select,
+.fi-fo-textarea {
+    border-radius: 10px !important;
+    border-color: #E5E1DA !important;
+    background-color: #FAFAF9 !important;
+}
+
+.fi-fo-text-input:focus-within {
+    border-color: #F97316 !important;
+    ring-color: rgba(249, 115, 22, 0.2) !important;
+}
+
+.fi-ta-pagination-overview {
+    font-size: 0.875rem;
+    color: #716B64 !important;
+}
+
+.fi-badge {
+    border-radius: 8px !important;
+    padding: 4px 10px !important;
+    text-transform: capitalize !important;
+}
+
+.fi-header-heading {
+    letter-spacing: -0.02em;
+    font-weight: 700 !important;
+}
+
+.fi-topbar {
+    background-color: rgba(253, 252, 248, 0.8) !important;
+    backdrop-filter: blur(8px);
+}
+
+/* 8. SCROLLBAR ELEGANTE (Fininha para não poluir) */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #FDFCF8;
+}
+::-webkit-scrollbar-thumb {
+    background: #E5E1DA;
+    border-radius: 10px;
+}
