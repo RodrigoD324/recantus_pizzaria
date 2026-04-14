@@ -6,7 +6,6 @@ use App\Filament\Resources\UserResource\Pages;
 use App\Helpers\CEP;
 use App\Models\User;
 use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\EditAction;
 use Filament\Forms;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -27,14 +26,11 @@ use Filament\Tables\Table;
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
-
     protected static ?string $navigationGroup = 'Gestão';
-
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
-
     protected static ?string $navigationLabel = 'Usuários';
-
     protected static ?string $breadcrumb = 'Usuários';
+    protected static ?string $slug = 'usuarios'; 
 
     public static function getPluralModelLabel(): string
     {

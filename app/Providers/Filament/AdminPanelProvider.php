@@ -17,6 +17,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -27,6 +28,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            ->font('Inter')
             ->brandName("Recantu's")
             ->favicon(asset('assets/icons/pizza.ico'))
             ->login(Login::class)
@@ -56,6 +58,41 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            ->renderHook(
+                'panels::head.end',
+                fn(): string => Blade::render("
+            <style>
+                /* Estilização da Sidebar */
+                .fi-sidebar {
+                    background-color: #1e293b !important;
+                    border-right: 1px solid #334155;
+                }
+
+                /* Cor do texto dos itens do menu */
+                .fi-sidebar-item-label, .fi-sidebar-group-label {
+                    color: #f1f5f9 !important;
+                }
+
+                /* Cor dos ícones */
+                .fi-sidebar-item-icon {
+                    color: #94a3b8 !important;
+                }
+
+                /* Efeito de Hover e Item Ativo */
+                .fi-sidebar-item-button:hover, 
+                .fi-sidebar-item-active,
+                .fi-sidebar-item-button.fi-active {
+                    background-color: #334155 !important;
+                }
+                
+                /* Logo/Nome da marca no topo da sidebar */
+                .fi-sidebar-header {
+                    background-color: #0f172a !important;
+                    border-bottom: 1px solid #1e293b;
+                }
+            </style>
+        "),
+            );
     }
 }
