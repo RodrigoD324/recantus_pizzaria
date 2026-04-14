@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Endereco extends Model
 {
     use HasFactory;
-    
+
     protected $table = 'endereco';
 
     protected $fillable = [
@@ -19,7 +19,6 @@ class Endereco extends Model
         'logradouro',
         'numero',
         'complemento',
-        'id_cancelamento',
     ];
 
     protected function casts(): array
@@ -28,5 +27,10 @@ class Endereco extends Model
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
+    }
+
+    public function pessoa()
+    {
+        return $this->belongsTo(Pessoa::class, 'id');
     }
 }

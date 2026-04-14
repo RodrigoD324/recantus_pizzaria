@@ -5,17 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Pessoa extends Model
+class UsuarioTipo extends Model
 {
     use HasFactory;
 
-    protected $table = 'pessoa';
+    protected $table = 'usuario_tipo';
 
     protected $fillable = [
-        'id_endereco',
-        'id_contato',
+        'referencia',
         'nome',
-        'cpf',
     ];
 
     protected function casts(): array
@@ -26,13 +24,8 @@ class Pessoa extends Model
         ];
     }
 
-    public function contato()
+    public function usuarios()
     {
-        return $this->belongsTo(Contato::class, 'id_contato', 'id');
-    }
-
-    public function endereco()
-    {
-        return $this->belongsTo(Endereco::class, 'id_endereco', 'id');
+        return $this->hasMany(User::class, 'id_usuario_tipo');
     }
 }

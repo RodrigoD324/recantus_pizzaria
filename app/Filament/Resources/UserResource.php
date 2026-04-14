@@ -3,12 +3,24 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
+use App\Helpers\CEP;
 use App\Models\User;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\EditAction;
 use Filament\Forms;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
+use Filament\Notifications\Notification;
+use Filament\Tables\Actions\BulkAction;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
 use Filament\Tables\Table;
 
 class UserResource extends Resource
@@ -41,183 +53,185 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
-                // --- SEÇÃO 1: PESSOAL ---
-                Forms\Components\Section::make('Informações Pessoais')
-                    ->relationship('pessoa')
+                Forms\Components\Group::make()
+                    // ->relationship('pessoa')
                     ->schema([
-                        Forms\Components\TextInput::make('nome')
-                            ->label('Nome Completo')
-                            ->placeholder('Ex: João Silva Sauro')
-                            ->required()
-                            ->columnSpan(2),
-
-                        Forms\Components\TextInput::make('cpf')
-                            ->label('CPF')
-                            ->placeholder('000.000.000-00')
-                            ->mask('999.999.999-99')
-                            ->dehydrateStateUsing(fn(string $state): string => preg_replace('/\D/', '', $state))
-                            ->required(),
-                    ])->columns(3),
-
-                // --- SEÇÃO 2: CONTATO ---
-                Forms\Components\Section::make('Informações de Contato')
-                    ->relationship('pessoa')
-                    ->schema([
-                        Forms\Components\Group::make()
-                            ->relationship('contato')
+                        Section::make('Informações Pessoais')
                             ->schema([
-                                Forms\Components\TextInput::make('email')
-                                    ->label('E-mail')
-                                    ->placeholder('joao@exemplo.com')
-                                    ->email()
+                                TextInput::make('pessoa.nome')
+                                    ->label('Nome Completo')
+                                    ->placeholder('Ex: João Silva Sauro')
                                     ->required()
                                     ->columnSpan(2),
 
-                                Forms\Components\TextInput::make('ddd_celular')
-                                    ->label('DDD')
-                                    ->placeholder('11')
-                                    ->maxLength(2)
-                                    ->required(),
-
-                                Forms\Components\TextInput::make('celular')
-                                    ->label('Celular')
-                                    ->placeholder('988887777')
-                                    ->mask('999999999')
-                                    ->maxLength(9)
-                                    ->required(),
-                            ])->columns(4),
-                    ]),
-
-                // --- SEÇÃO 3: ENDEREÇO ---
-                Forms\Components\Section::make('Informações de Endereço')
-                    ->relationship('pessoa')
-                    ->schema([
-                        Forms\Components\Group::make()
-                            ->relationship('endereco')
-                            ->schema([
-                                Forms\Components\TextInput::make('cep')
-                                    ->label('CEP')
-                                    ->placeholder('00000-000')
-                                    ->mask('99999-999')
-                                    ->dehydrateStateUsing(fn(string $state): string => preg_replace('/\D/', '', $state))
+                                TextInput::make('pessoa.cpf')
+                                    ->label('CPF')
+                                    ->placeholder('000.000.000-00')
+                                    ->mask('999.999.999-99')
                                     ->required()
                                     ->live(onBlur: true)
-                                    ->afterStateUpdated(function (Forms\Set $set, ?string $state) {
-                                        if (!$state)
-                                            return;
-
-                                        $cep = preg_replace('/\D/', '', $state);
-
-                                        if (strlen($cep) !== 8)
-                                            return;
-
-                                        try {
-                                            $response = \Illuminate\Support\Facades\Http::get("https://viacep.com.br/ws/{$cep}/json/");
-
-                                            if ($response->failed()) {
-                                                throw new \Exception('Erro na consulta do CEP.');
-                                            }
-
-                                            $data = $response->json();
-
-                                            if (isset($data['erro']) && $data['erro'] === true) {
-                                                \Filament\Notifications\Notification::make()
-                                                    ->title('CEP não encontrado')
-                                                    ->body('O CEP digitado não existe na base de dados.')
-                                                    ->warning()
-                                                    ->send();
-
-                                                return;
-                                            }
-
-                                            $set('logradouro', $data['logradouro'] ?? '');
-                                            $set('bairro', $data['bairro'] ?? '');
-                                            $set('municipio', $data['localidade'] ?? '');
-                                            $set('estado', $data['uf'] ?? '');
-
-                                        } catch (\Exception $e) {
-                                            \Filament\Notifications\Notification::make()
-                                                ->title('Erro ao buscar CEP')
-                                                ->body('Não foi possível conectar ao serviço de busca. Tente preencher manualmente.')
-                                                ->danger()
-                                                ->send();
+                                    ->dehydrateStateUsing(fn(string $state): string => preg_replace('/\D/', '', $state))
+                                    ->afterStateUpdated(function (Get $get, Set $set, $state) {
+                                        if ($get('../../id_usuario_tipo') == 2) {
+                                            $cpfApenasNumeros = preg_replace('/\D/', '', $state);
+                                            $set('../../login', $cpfApenasNumeros);
+                                            $set('../../password', $cpfApenasNumeros);
                                         }
                                     }),
-                                Forms\Components\TextInput::make('logradouro')
-                                    ->label('Logradouro')
-                                    ->placeholder('Ex: Rua das Flores')
-                                    ->required()
-                                    ->columnSpan(2),
-
-                                Forms\Components\TextInput::make('numero')
-                                    ->label('Número')
-                                    ->placeholder('123')
-                                    ->required(),
-
-                                Forms\Components\TextInput::make('complemento')
-                                    ->placeholder('Ex: Apto 12 / Bloco B')
-                                    ->label('Complemento'),
-
-                                Forms\Components\TextInput::make('bairro')
-                                    ->label('Bairro')
-                                    ->placeholder('Ex: Centro')
-                                    ->required(),
-
-                                Forms\Components\TextInput::make('municipio')
-                                    ->label('Município')
-                                    ->placeholder('Ex: São Paulo')
-                                    ->required(),
-
-                                Forms\Components\Select::make('estado')
-                                    ->label('Estado')
-                                    ->options([
-                                        'AC' => 'Acre',
-                                        'AL' => 'Alagoas',
-                                        'AP' => 'Amapá',
-                                        'AM' => 'Amazonas',
-                                        'BA' => 'Bahia',
-                                        'CE' => 'Ceará',
-                                        'DF' => 'Distrito Federal',
-                                        'ES' => 'Espírito Santo',
-                                        'GO' => 'Goiás',
-                                        'MA' => 'Maranhão',
-                                        'MT' => 'Mato Grosso',
-                                        'MS' => 'Mato Grosso do Sul',
-                                        'MG' => 'Minas Gerais',
-                                        'PA' => 'Pará',
-                                        'PB' => 'Paraíba',
-                                        'PR' => 'Paraná',
-                                        'PE' => 'Pernambuco',
-                                        'PI' => 'Piauí',
-                                        'RJ' => 'Rio de Janeiro',
-                                        'RN' => 'Rio Grande do Norte',
-                                        'RS' => 'Rio Grande do Sul',
-                                        'RO' => 'Rondônia',
-                                        'RR' => 'Roraima',
-                                        'SC' => 'Santa Catarina',
-                                        'SP' => 'São Paulo',
-                                        'SE' => 'Sergipe',
-                                        'TO' => 'Tocantins',
-                                    ])
-                                    ->searchable()
-                                    ->placeholder('Selecione um estado')
-                                    ->required(),
                             ])->columns(3),
-                    ]),
 
-                // --- SEÇÃO 4: ACESSO ---
-                Forms\Components\Section::make('Acesso ao Sistema')
+                        Section::make('Informações de Contato')
+                            ->schema([
+                                Forms\Components\Group::make()
+                                    // ->relationship('contato')
+                                    ->schema([
+                                        TextInput::make('pessoa.contato.email')
+                                            ->label('E-mail')
+                                            ->placeholder('joao@exemplo.com')
+                                            ->email()
+                                            ->required()
+                                            ->columnSpan(2),
+
+                                        TextInput::make('pessoa.contato.ddd_celular')
+                                            ->label('DDD')
+                                            ->placeholder('11')
+                                            ->maxLength(2)
+                                            ->required(),
+
+                                        TextInput::make('pessoa.contato.celular')
+                                            ->label('Celular')
+                                            ->placeholder('988887777')
+                                            ->mask('999999999')
+                                            ->maxLength(9)
+                                            ->required(),
+                                    ])->columns(4),
+                            ]),
+
+                        Section::make('Informações de Endereço')
+                            ->schema([
+                                Forms\Components\Group::make()
+                                    // ->relationship('endereco')
+                                    ->schema([
+                                        TextInput::make('pessoa.endereco.cep')
+                                            ->label('CEP')
+                                            ->placeholder('00000-000')
+                                            ->mask('99999-999')
+                                            ->required()
+                                            ->live(onBlur: true)
+                                            ->dehydrateStateUsing(fn(string $state): string => preg_replace('/\D/', '', $state))
+                                            ->afterStateUpdated(function (Set $set, ?string $state) {
+                                                if (!$state)
+                                                    return;
+                                                try {
+                                                    $data = CEP::get($state);
+                                                    if (isset($data['erro']) && $data['erro'] === true) {
+                                                        Notification::make()
+                                                            ->title('CEP não encontrado')->warning()->send();
+                                                        return;
+                                                    }
+                                                    $set('pessoa.endereco.logradouro', $data['logradouro'] ?? '');
+                                                    $set('pessoa.endereco.bairro', $data['bairro'] ?? '');
+                                                    $set('pessoa.endereco.municipio', $data['localidade'] ?? '');
+                                                    $set('pessoa.endereco.estado', $data['uf'] ?? '');
+                                                } catch (\Exception $e) {
+                                                }
+                                            }),
+
+                                        TextInput::make('pessoa.endereco.logradouro')
+                                            ->label('Logradouro')
+                                            ->placeholder('Ex: Rua das Flores')
+                                            ->required()
+                                            ->columnSpan(2),
+
+                                        TextInput::make('pessoa.endereco.numero')
+                                            ->label('Número')
+                                            ->placeholder('123')
+                                            ->required(),
+
+                                        TextInput::make('pessoa.endereco.complemento')
+                                            ->label('Complemento')
+                                            ->placeholder('Ex: Apto 12 / Bloco B'),
+
+                                        TextInput::make('pessoa.endereco.bairro')
+                                            ->label('Bairro')
+                                            ->placeholder('Ex: Centro')
+                                            ->required(),
+
+                                        TextInput::make('pessoa.endereco.municipio')
+                                            ->label('Município')
+                                            ->placeholder('Ex: São Paulo')
+                                            ->required(),
+
+                                        Select::make('pessoa.endereco.estado')
+                                            ->label('Estado')
+                                            ->options([
+                                                'AC' => 'Acre',
+                                                'AL' => 'Alagoas',
+                                                'AP' => 'Amapá',
+                                                'AM' => 'Amazonas',
+                                                'BA' => 'Bahia',
+                                                'CE' => 'Ceará',
+                                                'DF' => 'Distrito Federal',
+                                                'ES' => 'Espírito Santo',
+                                                'GO' => 'Goiás',
+                                                'MA' => 'Maranhão',
+                                                'MT' => 'Mato Grosso',
+                                                'MS' => 'Mato Grosso do Sul',
+                                                'MG' => 'Minas Gerais',
+                                                'PA' => 'Pará',
+                                                'PB' => 'Paraíba',
+                                                'PR' => 'Paraná',
+                                                'PE' => 'Pernambuco',
+                                                'PI' => 'Piauí',
+                                                'RJ' => 'Rio de Janeiro',
+                                                'RN' => 'Rio Grande do Norte',
+                                                'RS' => 'Rio Grande do Sul',
+                                                'RO' => 'Rondônia',
+                                                'RR' => 'Roraima',
+                                                'SC' => 'Santa Catarina',
+                                                'SP' => 'São Paulo',
+                                                'SE' => 'Sergipe',
+                                                'TO' => 'Tocantins',
+                                            ])
+                                            ->searchable()
+                                            ->placeholder('Selecione um estado')
+                                            ->required(),
+                                    ])->columns(3),
+                            ]),
+                    ])->columnSpanFull(),
+
+                Section::make('Acesso ao Sistema')
                     ->schema([
-                        Forms\Components\TextInput::make('login')
+                        Select::make('id_usuario_tipo')
+                            ->label('Tipo de Usuário')
+                            ->relationship('tipo', 'nome')
+                            ->preload()
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set, $state) {
+                                if ($state == 2) { // Cliente
+                                    $cpf = $get('pessoa.cpf');
+                                    $cpfLimpio = preg_replace('/\D/', '', $cpf ?? '');
+                                    $set('login', $cpfLimpio);
+                                    $set('password', $cpfLimpio);
+                                }
+                            }),
+
+                        TextInput::make('login')
+                            ->label('Login')
                             ->placeholder('usuario.exemplo')
-                            ->required(),
-                        Forms\Components\TextInput::make('password')
+                            ->required()
+                            ->disabled(fn(Get $get) => $get('id_usuario_tipo') == 2)
+                            ->dehydrated(),
+
+                        TextInput::make('password')
                             ->label('Senha')
                             ->placeholder('********')
                             ->password()
-                            ->dehydrated(fn($state) => filled($state))
-                            ->required(fn($context) => $context === 'create'),
-                    ])->columns(2),
+                            ->required(fn($context, Get $get) => $context === 'create' && $get('id_usuario_tipo') != 2)
+                            ->disabled(fn(Get $get) => $get('id_usuario_tipo') == 2)
+                            ->dehydrated(fn($state) => filled($state)),
+                    ])->columns(3),
             ]);
     }
 
@@ -225,32 +239,37 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('pessoa.nome')
+                TextColumn::make('pessoa.nome')
                     ->label('Nome')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('pessoa.cpf')
+                TextColumn::make('pessoa.cpf')
                     ->label('CPF')
                     ->copyable(),
 
-                Tables\Columns\TextColumn::make('pessoa.contato.email')
+                TextColumn::make('pessoa.contato.email')
                     ->label('E-mail'),
 
-                Tables\Columns\TextColumn::make('telefone')
+                TextColumn::make('telefone')
                     ->label('Celular')
                     ->getStateUsing(function ($record) {
                         return "({$record->pessoa?->contato?->ddd_celular}) {$record->pessoa?->contato?->celular}";
                     }),
-                Tables\Columns\TextColumn::make('status')
+                TextColumn::make('id_usuario_tipo')
+                    ->label('Tipo')
+                    ->badge()
+                    ->getStateUsing(fn($record) => $record->id_usuario_tipo == 1 ? 'Admin' : 'Cliente')
+                    ->color(fn($state) => $state === 'Admin' ? 'info' : 'warning'),
+                TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->getStateUsing(fn($record) => $record->id_cancelamento ? 'Desativado' : 'Ativo')
                     ->color(fn($state) => $state === 'Ativo' ? 'success' : 'danger'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('cancelar')
+                EditAction::make(),
+                Action::make('cancelar')
                     ->label('Desativar')
                     ->icon('heroicon-o-trash')
                     ->color('danger')
@@ -260,7 +279,7 @@ class UserResource extends Resource
                     ->modalSubmitActionLabel('Confirmar Cancelamento')
                     ->hidden(fn($record) => $record->id_cancelamento !== null)
                     ->form([
-                        Forms\Components\Textarea::make('motivo')
+                        Textarea::make('motivo')
                             ->label('Motivo')
                             ->required(),
                     ])
@@ -272,12 +291,12 @@ class UserResource extends Resource
                         $record->update([
                             'id_cancelamento' => $cancelamento->id,
                         ]);
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('Usuário cancelado com sucesso')
                             ->success()
                             ->send();
                     }),
-                Tables\Actions\Action::make('ativar')
+                Action::make('ativar')
                     ->label('Ativar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
@@ -290,20 +309,20 @@ class UserResource extends Resource
                             'id_cancelamento' => null,
                         ]);
 
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('Usuário reativado com sucesso')
                             ->success()
                             ->send();
                     }),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make('cancelar_selecionados')
+                BulkActionGroup::make([
+                    BulkAction::make('cancelar_selecionados')
                         ->label('Cancelar Selecionados')
                         ->icon('heroicon-o-trash')
                         ->color('danger')
                         ->form([
-                            Forms\Components\Textarea::make('motivo')
+                            Textarea::make('motivo')
                                 ->label('Motivo para todos os selecionados')
                                 ->required(),
                         ])
@@ -326,8 +345,8 @@ class UserResource extends Resource
     {
         return [
             'index' => Pages\ListUsers::route('/'),
-            'create' => Pages\CreateUser::route('/create'),
-            'edit' => Pages\EditUser::route('/{record}/edit'),
+            'create' => Pages\CreateUser::route('/criar'),
+            'edit' => Pages\EditUser::route('/{record}/editar'),
         ];
     }
 }

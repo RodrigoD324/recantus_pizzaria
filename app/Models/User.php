@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasName;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,7 +26,6 @@ class User extends Authenticatable implements HasName
         'id_usuario_tipo',
         'login',
         'password',
-        'id_cancelamento',
     ];
 
     protected $hidden = [
@@ -53,21 +54,21 @@ class User extends Authenticatable implements HasName
 
     public function getFilamentName(): string
     {
-        return (string) ($this->login ?? $this->id ?? 'Usuário Sem Nome');
+        return $this->pessoa?->nome ?? $this->login;
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->id_usuario_tipo != 2;
     }
 
     public function pessoa()
     {
-        return $this->belongsTo(Pessoa::class, 'id_pessoa');
+        return $this->belongsTo(Pessoa::class, 'id_pessoa', 'id');
     }
 
-    public function contato()
+    public function tipo()
     {
-        return $this->hasOneThrough(Contato::class, Pessoa::class, 'id', 'id_pessoa', 'id_pessoa', 'id');
-    }
-
-    public function endereco()
-    {
-        return $this->hasOneThrough(Endereco::class, Pessoa::class, 'id', 'id_pessoa', 'id_pessoa', 'id');
+        return $this->belongsTo(UsuarioTipo::class, 'id_usuario_tipo');
     }
 }
