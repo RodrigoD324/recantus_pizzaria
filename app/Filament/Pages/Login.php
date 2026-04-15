@@ -17,7 +17,7 @@ class Login extends BaseLogin
     {
         return $form
             ->schema([
-                TextInput::make('cpf') 
+                TextInput::make('cpf')
                     ->label('CPF')
                     ->placeholder('000.000.000-00')
                     ->mask('999.999.999-99')
@@ -65,5 +65,10 @@ class Login extends BaseLogin
         throw \Illuminate\Validation\ValidationException::withMessages([
             'data.cpf' => __('filament-panels::pages/auth/login.messages.failed'),
         ]);
+    }
+
+    public function getTitle(): string
+    {
+        return "Acessar";
     }
 }
