@@ -75,11 +75,18 @@ class UserResource extends Resource
                                         fn(?string $state) =>
                                         filled($state) ? preg_replace('/\D/', '', $state) : null
                                     )
-                                    ->rule(function (): Closure {
-                                        return function (string $attribute, $value, Closure $fail) {
+                                    ->rule(function ($record): Closure {
+                                        return function (string $attribute, $value, Closure $fail) use ($record) {
                                             $cpf = preg_replace('/\D/', '', $value ?? '');
                                             if (!$cpf) return;
-                                            if (\App\Models\Pessoa::where('cpf', $cpf)->exists()) {
+
+                                            $query = \App\Models\Pessoa::where('cpf', $cpf);
+
+                                            if ($record && $record->id_pessoa) {
+                                                $query->where('id', '!=', $record->id_pessoa);
+                                            }
+
+                                            if ($query->exists()) {
                                                 $fail('Já existe uma pessoa cadastrada com este CPF.');
                                             }
                                         };

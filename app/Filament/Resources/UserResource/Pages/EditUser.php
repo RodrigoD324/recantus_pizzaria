@@ -5,6 +5,7 @@ namespace App\Filament\Resources\UserResource\Pages;
 use App\Filament\Resources\UserResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Model;
 
 class EditUser extends EditRecord
 {
@@ -44,5 +45,34 @@ class EditUser extends EditRecord
         }
 
         return $data;
+    }
+
+    protected function handleRecordUpdate(Model $record, array $data): Model
+    {
+        // 1. Atualiza os dados do usuário (login, senha, tipo, etc)
+        $record->update($data);
+
+        // 2. Verifica se existem dados de 'pessoa' no formulário
+        if (isset($data['pessoa'])) {
+            $pessoaData = $data['pessoa'];
+            $pessoa = $record->pessoa;
+
+            if ($pessoa) {
+                // Atualiza os dados da Pessoa (Nome, CPF)
+                $pessoa->update($pessoaData);
+
+                // Atualiza os dados de Contato
+                if (isset($pessoaData['contato'])) {
+                    $pessoa->contato()->update($pessoaData['contato']);
+                }
+
+                // Atualiza os dados de Endereço
+                if (isset($pessoaData['endereco'])) {
+                    $pessoa->endereco()->update($pessoaData['endereco']);
+                }
+            }
+        }
+
+        return $record;
     }
 }
