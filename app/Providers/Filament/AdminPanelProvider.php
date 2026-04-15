@@ -31,7 +31,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->brandLogo(asset('assets/imgs/recantus_logo.png'))
-            ->brandLogoHeight('160px')
+            ->brandLogoHeight('120px')
             ->darkMode(false)
             // ->spa()
             ->favicon(asset('assets/icons/pizza.ico'))

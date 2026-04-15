@@ -12,7 +12,7 @@
                     <!-- <h1 class="text-3xl font-bold tracking-tight text-gray-950 dark:text-white">
                         Pizzaria Recantu's
                     </h1> -->
-                    <img src="{{ asset('assets/imgs/recantus_logo.png') }}" alt="Logo" class="mx-auto h-[180px] w-auto">
+                    <img src="{{ asset('assets/imgs/recantus_logo.png') }}" alt="Logo" class="mx-auto h-[140px] w-auto">
                     <p class="text-sm text-gray-600 dark:text-gray-400">
                         Monitore e gerencie sua pizzaria de forma prática.
                     </p>

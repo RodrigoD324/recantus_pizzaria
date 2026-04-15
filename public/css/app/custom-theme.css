@@ -218,14 +218,14 @@
 .select-estado-wrapper .fi-dropdown-panel,
 .select-estado-wrapper .fi-select-results-container,
 .select-estado-wrapper [ax-load] .fi-fo-select-results {
-    position: fixed !important; 
+    position: fixed !important;
     z-index: 99999 !important;
     min-width: 250px !important;
 }
 
-.fi-section, 
+.fi-section,
 .fi-ta-ctn,
-.fi-fo-field-wrp, 
+.fi-fo-field-wrp,
 .fi-fo-grid {
     overflow: visible !important;
 }
