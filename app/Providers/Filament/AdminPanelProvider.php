@@ -11,6 +11,7 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -30,6 +31,7 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->id('admin')
             ->path('admin')
+            ->sidebarWidth('15rem')
             ->brandLogo(asset('assets/imgs/recantus_logo.png'))
             ->brandLogoHeight('120px')
             ->darkMode(false)
@@ -68,6 +70,10 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 'panels::head.end',
                 fn(): string => Blade::render('<link rel="stylesheet" href="{{ asset(\'css/app/custom-theme.css\') }}">'),
+            )
+            ->renderHook(
+                PanelsRenderHook::CONTENT_END,
+                fn(): string => view('filament.footer'),
             );
     }
 }
