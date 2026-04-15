@@ -53,8 +53,8 @@ class ProdutoResource extends Resource
     {
         return [
             'index' => Pages\ListProdutos::route('/'),
-            'create' => Pages\CreateProduto::route('/create'),
-            'edit' => Pages\EditProduto::route('/{record}/edit'),
+            'create' => Pages\CreateProduto::route('/criar'),
+            'edit' => Pages\EditProduto::route('/{record}/editar'),
         ];
     }
 }
