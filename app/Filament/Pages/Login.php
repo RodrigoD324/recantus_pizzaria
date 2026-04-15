@@ -43,7 +43,12 @@ class Login extends BaseLogin
             $q->where('cpf', $cpfLimpo);
         })->first();
 
-        if (!$user || !Hash::check($data['password'], $user->password) || $user->id_usuario_tipo == 2) {
+        if (
+            !$user ||
+            !Hash::check($data['password'], $user->password) ||
+            $user->id_usuario_tipo == 2 ||
+            $user->id_cancelamento !== null
+        ) {
             $this->throwFailureValidationException();
         }
 
