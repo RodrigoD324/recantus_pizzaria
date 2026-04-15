@@ -33,6 +33,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(asset('assets/imgs/recantus_logo.png'))
             ->brandLogoHeight('160px')
             ->darkMode(false)
+            // ->spa()
             ->favicon(asset('assets/icons/pizza.ico'))
             ->login(Login::class)
             ->colors([
@@ -40,7 +41,6 @@ class AdminPanelProvider extends PanelProvider
                 'gray' => Color::Stone,
             ])
             ->font('Poppins')
-            // ->viteTheme('resources/css/filament/admin/theme.css')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([

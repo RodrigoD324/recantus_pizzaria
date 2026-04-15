@@ -2,15 +2,99 @@
     background-color: #FDFCF8 !important;
 }
 
-.fi-section, 
-.fi-ta-ctn, 
+.fi-section,
+.fi-ta-ctn,
 .fi-ta-empty-state,
 .fi-modal-window {
     background-color: #FFFFFF !important;
-    border: 1px solid #E5E1DA !important; 
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.03), 0 4px 6px -4px rgba(0, 0, 0, 0.03) !important;
-    border-radius: 16px !important;
-    overflow: hidden;
+    border: none !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.02), 0 8px 10px -6px rgba(0, 0, 0, 0.02), inset 0 0 0 1px rgba(229, 225, 218, 0.5) !important;
+    border-radius: 24px !important;
+
+    overflow: visible !important;
+    position: relative;
+}
+
+.fi-fo-text-input,
+.fi-fo-select,
+.fi-fo-textarea {
+    background-color: #FDFCF8 !important;
+    border: 1px solid #E5E1DA !important;
+    border-radius: 12px !important;
+    padding: 10px 14px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+}
+
+.fi-fo-text-input:focus-within,
+.fi-fo-select:focus-within {
+    background-color: #FFFFFF !important;
+    border-color: #F97316 !important;
+    ring: 3px solid rgba(249, 115, 22, 0.15) !important;
+    transform: translateY(-1px);
+}
+
+.fi-dropdown-panel {
+    border-radius: 14px !important;
+    border: 1px solid #E5E1DA !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+    backdrop-filter: blur(10px);
+    background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.fi-select-results-container,
+.fi-dropdown-panel,
+.select2-container--open,
+[ax-load] .fi-fo-select-results {
+    z-index: 9999 !important;
+    position: absolute !important;
+    background-color: white !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.fi-fo-select input[type="search"] {
+    background-color: #FFFFFF !important;
+    border-radius: 8px !important;
+    margin-bottom: 4px !important;
+}
+
+.fi-fo-select-option {
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    margin: 2px 4px !important;
+    transition: background 0.2s ease !important;
+}
+
+.fi-fo-select-option:hover {
+    background-color: #FDFCF8 !important;
+    color: #F97316 !important;
+}
+
+.fi-section,
+.fi-ta-ctn {
+    overflow: visible !important;
+    z-index: 10;
+}
+
+.fi-main>* {
+    animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fi-ta-ctn>div,
+.fi-section>div {
+    border-radius: 24px !important;
 }
 
 .fi-ta-header-ctn {
@@ -49,7 +133,7 @@
 }
 
 .fi-sidebar-item-active {
-    background-color: rgba(249, 115, 22, 0.1) !important; 
+    background-color: rgba(249, 115, 22, 0.1) !important;
     color: #D97706 !important;
 }
 
@@ -73,7 +157,7 @@
 }
 
 .fi-fo-wizard-header-step-icon,
-.fi-fo-text-input, 
+.fi-fo-text-input,
 .fi-fo-select,
 .fi-fo-textarea {
     border-radius: 10px !important;
@@ -107,14 +191,46 @@
     backdrop-filter: blur(8px);
 }
 
-/* 8. SCROLLBAR ELEGANTE (Fininha para não poluir) */
 ::-webkit-scrollbar {
     width: 6px;
 }
+
 ::-webkit-scrollbar-track {
     background: #FDFCF8;
 }
+
 ::-webkit-scrollbar-thumb {
     background: #E5E1DA;
     border-radius: 10px;
+}
+
+.fi-dropdown-panel,
+.fi-select-results-container,
+[ax-load] .fi-fo-select-results {
+    position: absolute !important;
+    z-index: 1000 !important;
+    width: 100% !important;
+    background-color: white !important;
+    border: 1px solid #E5E1DA !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.select-estado-wrapper .fi-dropdown-panel,
+.select-estado-wrapper .fi-select-results-container,
+.select-estado-wrapper [ax-load] .fi-fo-select-results {
+    position: fixed !important; 
+    z-index: 99999 !important;
+    min-width: 250px !important;
+}
+
+.fi-section, 
+.fi-ta-ctn,
+.fi-fo-field-wrp, 
+.fi-fo-grid {
+    overflow: visible !important;
+}
+
+.fi-section:focus-within {
+    z-index: 50 !important;
+    position: relative;
 }

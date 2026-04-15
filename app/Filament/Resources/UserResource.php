@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\UserResource\Pages;
 use App\Helpers\CEP;
 use App\Models\User;
+use Closure;
 use Filament\Tables\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Components\Section;
@@ -14,8 +15,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\BulkAction;
-use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Form;
@@ -60,6 +59,7 @@ class UserResource extends Resource
                                     ->label('Nome Completo')
                                     ->placeholder('Ex: João Silva Sauro')
                                     ->required()
+                                    ->autofocus()
                                     ->columnSpan(2)
                                     ->validationMessages([
                                         'required' => 'Ei, você esqueceu de preencher o Nome Completo!',
@@ -69,20 +69,21 @@ class UserResource extends Resource
                                     ->label('CPF')
                                     ->placeholder('000.000.000-00')
                                     ->mask('999.999.999-99')
+                                    ->disabled(fn($record) => $record !== null)
                                     ->live(onBlur: true)
-
-                                    // 🔥 GARANTE QUE O VALOR JÁ ESTÁ LIMPO NO STATE
                                     ->dehydrateStateUsing(
                                         fn(?string $state) =>
                                         filled($state) ? preg_replace('/\D/', '', $state) : null
                                     )
-
-                                    ->unique(
-                                        table: \App\Models\Pessoa::class,
-                                        column: 'cpf',
-                                        ignoreRecord: true
-                                    )
-
+                                    ->rule(function (): Closure {
+                                        return function (string $attribute, $value, Closure $fail) {
+                                            $cpf = preg_replace('/\D/', '', $value ?? '');
+                                            if (!$cpf) return;
+                                            if (\App\Models\Pessoa::where('cpf', $cpf)->exists()) {
+                                                $fail('Já existe uma pessoa cadastrada com este CPF.');
+                                            }
+                                        };
+                                    })
                                     ->validationMessages([
                                         'unique' => 'Já existe uma pessoa cadastrada com este CPF.',
                                     ])
@@ -98,7 +99,6 @@ class UserResource extends Resource
                         Section::make('Informações de Contato')
                             ->schema([
                                 Forms\Components\Group::make()
-                                    // ->relationship('contato')
                                     ->schema([
                                         TextInput::make('pessoa.contato.email')
                                             ->label('E-mail')
@@ -107,13 +107,11 @@ class UserResource extends Resource
                                             ->unique(
                                                 table: \App\Models\Contato::class,
                                                 column: 'email',
-                                                ignoreRecord: true
+                                                ignorable: fn($record) => $record?->pessoa?->contato
                                             )
-                                            // ->required()
                                             ->columnSpan(2)
                                             ->validationMessages([
                                                 'unique' => 'Já existe um usuário cadastrado com este e-mail.',
-                                                // 'required' => 'Ei, você esqueceu de preencher o E-mail!',
                                             ]),
 
                                         TextInput::make('pessoa.contato.ddd_celular')
@@ -140,7 +138,6 @@ class UserResource extends Resource
                         Section::make('Informações de Endereço')
                             ->schema([
                                 Forms\Components\Group::make()
-                                    // ->relationship('endereco')
                                     ->schema([
                                         TextInput::make('pessoa.endereco.cep')
                                             ->label('CEP')
@@ -238,11 +235,16 @@ class UserResource extends Resource
                                                 'SE' => 'Sergipe',
                                                 'TO' => 'Tocantins',
                                             ])
+                                            ->default('SP')
                                             ->searchable()
+                                            ->native(false)
                                             ->placeholder('Selecione um estado')
                                             ->required()
                                             ->validationMessages([
                                                 'required' => 'Ei, você esqueceu de selecionar o Estado!',
+                                            ])
+                                            ->extraAttributes([
+                                                'class' => 'select-estado-wrapper',
                                             ]),
                                     ])->columns(3),
                             ]),
@@ -322,15 +324,17 @@ class UserResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('pessoa.cpf')
-                    ->label('CPF')
-                    ->copyable(),
+                // TextColumn::make('pessoa.cpf')
+                //     ->label('CPF')
+                //     ->copyable(),
 
-                TextColumn::make('pessoa.contato.email')
-                    ->label('E-mail'),
+                // TextColumn::make('pessoa.contato.email')
+                //     ->label('E-mail'),
 
-                TextColumn::make('telefone')
+                TextColumn::make('pessoa.contato.celular')
                     ->label('Celular')
+                    ->searchable()
+                    ->copyable()
                     ->getStateUsing(function ($record) {
                         return "({$record->pessoa?->contato?->ddd_celular}) {$record->pessoa?->contato?->celular}";
                     }),
@@ -346,7 +350,6 @@ class UserResource extends Resource
                     ->color(fn($state) => $state === 'Ativo' ? 'success' : 'danger'),
             ])
             ->actions([
-                // EditAction::make(),
                 Action::make('cancelar')
                     ->label('Desativar')
                     ->icon('heroicon-o-trash')
@@ -392,30 +395,6 @@ class UserResource extends Resource
                             ->success()
                             ->send();
                     }),
-            ])
-            ->bulkActions([
-                BulkActionGroup::make([
-                    BulkAction::make('cancelar_selecionados')
-                        ->label('Cancelar Selecionados')
-                        ->icon('heroicon-o-trash')
-                        ->color('danger')
-                        ->form([
-                            Textarea::make('motivo')
-                                ->label('Motivo para todos os selecionados')
-                                ->required(),
-                        ])
-                        ->action(function (\Illuminate\Database\Eloquent\Collection $records, array $data): void {
-                            $cancelamento = \App\Models\Cancelamento::create([
-                                'motivo' => $data['motivo'],
-                                'id_usuario' => auth()->id(),
-                            ]);
-
-                            $records->each(fn($record) => $record->update([
-                                'id_cancelamento' => $cancelamento->id,
-                            ]));
-                        })
-                        ->requiresConfirmation(),
-                ]),
             ]);
     }
 
