@@ -27,4 +27,11 @@ class Produto extends Model
         ];
     }
 
+    public function pedido()
+    {
+        return $this->belongsToMany(Pedido::class, 'pedido_produto', 'id_produto', 'id_pedido')
+            ->withPivot('quantidade', 'preco_unitario', 'subtotal')
+            ->withTimestamps();
+    }
+
 }

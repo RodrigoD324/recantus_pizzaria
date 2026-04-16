@@ -3,6 +3,10 @@
 namespace App\Livewire;
 
 use App\Models\Produto;
+use App\Models\Pedido;
+use App\Models\PedidoProduto;
+use App\Models\PedidoStatus;
+use App\Models\TipoPagamento;
 use Livewire\Component;
 
 class PdvComponent extends Component
@@ -12,26 +16,44 @@ class PdvComponent extends Component
     public $ultimo_preco = 0;
     public $search = '';
     public $searchResults = [];
-    public $selectedIndex = -1; // Índice do item selecionado na busca
-    public $editingIndex = null; // Índice do item que está editando quantidade
-    public $editingQty = ''; // Valor temporário da quantidade
+    public $selectedIndex = -1;
+    public $editingIndex = null;
+    public $editingQty = '';
+
+    public $showPaymentModal = false;
+    public $tiposPagamento = [];
+    public $selectedPaymentType = null;
+    public $valorPago = '';
+    public $troco = 0;
+    public $observacao = '';
+    public $showTroco = false;
+
+    public function mount()
+    {
+        $this->carregarTiposPagamento();
+    }
+
+    public function carregarTiposPagamento()
+    {
+        $this->tiposPagamento = TipoPagamento::whereNull('id_cancelamento')->get();
+    }
 
     public function updatedSearch()
     {
         if (strlen($this->search) > 0) {
             $this->searchResults = Produto::where('descricao', 'like', '%' . strtoupper($this->search) . '%')
                 ->orWhere('codigo', 'like', "{$this->search}%")
+                ->whereNull('id_cancelamento')
                 ->limit(10)
                 ->get()
                 ->toArray();
-            $this->selectedIndex = 0; // Reseta seleção para o primeiro item
+            $this->selectedIndex = 0;
         } else {
             $this->searchResults = [];
             $this->selectedIndex = -1;
         }
     }
 
-    // Navegação com setas
     public function moveSelectionUp()
     {
         if ($this->selectedIndex > 0) {
@@ -46,7 +68,6 @@ class PdvComponent extends Component
         }
     }
 
-    // Adiciona o item selecionado ou o item atual
     public function addSelectedProduct()
     {
         if ($this->selectedIndex >= 0 && isset($this->searchResults[$this->selectedIndex])) {
@@ -122,14 +143,12 @@ class PdvComponent extends Component
         }
     }
 
-    // Inicia edição da quantidade
     public function startEditQty($index)
     {
         $this->editingIndex = $index;
         $this->editingQty = $this->cart[$index]['qty'];
     }
 
-    // Salva a quantidade editada
     public function saveQty()
     {
         if ($this->editingIndex !== null && isset($this->cart[$this->editingIndex])) {
@@ -144,11 +163,64 @@ class PdvComponent extends Component
         $this->editingQty = '';
     }
 
-    // Cancela edição
     public function cancelEdit()
     {
         $this->editingIndex = null;
         $this->editingQty = '';
+    }
+    public function abrirModalPagamento()
+    {
+        if (count($this->cart) == 0) {
+            session()->flash('error', 'Carrinho vazio!');
+            return;
+        }
+
+        $this->showPaymentModal = true;
+        $this->selectedPaymentType = null;
+        $this->valorPago = '';
+        $this->troco = 0;
+        $this->observacao = '';
+        $this->showTroco = false;
+    }
+
+    public function fecharModal()
+    {
+        $this->showPaymentModal = false;
+        $this->reset(['selectedPaymentType', 'valorPago', 'troco', 'observacao']);
+    }
+
+    public function updatedSelectedPaymentType($value)
+    {
+        $tipo = TipoPagamento::find($value);
+        $this->showTroco = $tipo && $tipo->permite_troco;
+
+        if (!$this->showTroco && $tipo) {
+            $this->valorPago = 'R$ ' . number_format($this->total_venda, 2, ',', '.');
+            $this->calcularTroco();
+        }
+    }
+
+    public function updatedValorPago()
+    {
+        $this->calcularTroco();
+    }
+
+    public function calcularTroco()
+    {
+        $valorPago = $this->parseMoney($this->valorPago);
+
+        if ($valorPago > $this->total_venda) {
+            $this->troco = $valorPago - $this->total_venda;
+        } else {
+            $this->troco = 0;
+        }
+    }
+
+    private function parseMoney($value)
+    {
+        $value = str_replace(['R$', ' ', '.'], '', $value);
+        $value = str_replace(',', '.', $value);
+        return (float) $value;
     }
 
     public function finalizarVenda()
@@ -158,11 +230,83 @@ class PdvComponent extends Component
             return;
         }
 
-        session()->flash('success', 'Venda finalizada! Total: R$ ' . number_format($this->total_venda, 2, ',', '.'));
+        if (!$this->selectedPaymentType) {
+            session()->flash('error', 'Selecione uma forma de pagamento!');
+            return;
+        }
 
-        $this->cart = [];
-        $this->total_venda = 0;
-        $this->ultimo_preco = 0;
+        $tipoPagamento = TipoPagamento::find($this->selectedPaymentType);
+        $valorPago = $this->parseMoney($this->valorPago);
+
+        if ($tipoPagamento->referencia != 'credit_account') {
+            if (!$valorPago || $valorPago <= 0) {
+                session()->flash('error', 'Informe o valor pago!');
+                return;
+            }
+
+            if ($valorPago < $this->total_venda) {
+                session()->flash('error', 'Valor pago é menor que o total da venda!');
+                return;
+            }
+        }
+
+        try {
+            if ($tipoPagamento->referencia == 'credit_account') {
+                $status = PedidoStatus::where('referencia', 'pending')->first();
+                $valorPagoFinal = 0;
+                $valorAPagar = $this->total_venda;
+                $trocoFinal = 0;
+            } else {
+                $status = PedidoStatus::where('referencia', 'completed')->first();
+                $valorPagoFinal = $valorPago;
+                $valorAPagar = 0;
+                $trocoFinal = $this->troco;
+            }
+
+            $pedido = Pedido::create([
+                'id_tipo_pagamento' => $this->selectedPaymentType,
+                'id_vendedor' => auth()->id(),
+                'id_pedido_status' => $status->id,
+                'valor_total' => $this->total_venda,
+                'valor_pago' => $valorPagoFinal,
+                'valor_a_pagar' => $valorAPagar,
+                'troco' => $trocoFinal,
+                'observacao' => $this->observacao,
+            ]);
+
+            foreach ($this->cart as $item) {
+                PedidoProduto::create([
+                    'id_pedido' => $pedido->id,
+                    'id_produto' => $item['id'],
+                    'quantidade' => $item['qty'],
+                    'preco_unitario' => $item['price'],
+                    'subtotal' => $item['subtotal'],
+                ]);
+            }
+
+            $mensagem = "✅ Venda finalizada com sucesso!\n";
+            $mensagem .= "📋 Pedido #{$pedido->numero_pedido}\n";
+            $mensagem .= "💰 Total: R$ " . number_format($this->total_venda, 2, ',', '.') . "\n";
+            $mensagem .= "💳 Forma: {$tipoPagamento->nome}";
+
+            if ($tipoPagamento->referencia == 'credit_account') {
+                $mensagem .= "\n⏳ Status: Pendente - Cliente ficou devendo R$ " . number_format($valorAPagar, 2, ',', '.');
+            } elseif ($trocoFinal > 0) {
+                $mensagem .= "\n💵 Troco: R$ " . number_format($trocoFinal, 2, ',', '.');
+            }
+
+            session()->flash('success', $mensagem);
+
+            $this->cart = [];
+            $this->total_venda = 0;
+            $this->ultimo_preco = 0;
+            $this->fecharModal();
+
+            $this->dispatch('$refresh');
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Erro ao finalizar venda: ' . $e->getMessage());
+        }
     }
 
     public function render()
