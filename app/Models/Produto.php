@@ -12,13 +12,11 @@ class Produto extends Model
     protected $table = 'produto';
 
     protected $fillable = [
-        'estado',
-        'municipio',
-        'bairro',
-        'cep',
-        'logradouro',
-        'numero',
-        'complemento',
+        'descricao',
+        'codigo',
+        'valor',
+        'quantidade',
+        'id_cancelamento',
     ];
 
     protected function casts(): array
