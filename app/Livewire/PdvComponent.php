@@ -27,6 +27,7 @@ class PdvComponent extends Component
     public $troco = 0;
     public $observacao = '';
     public $showTroco = false;
+    public $valorPagoRaw = '';
 
     public function mount()
     {
@@ -168,6 +169,7 @@ class PdvComponent extends Component
         $this->editingIndex = null;
         $this->editingQty = '';
     }
+
     public function abrirModalPagamento()
     {
         if (count($this->cart) == 0) {
@@ -178,6 +180,7 @@ class PdvComponent extends Component
         $this->showPaymentModal = true;
         $this->selectedPaymentType = null;
         $this->valorPago = '';
+        $this->valorPagoRaw = '';
         $this->troco = 0;
         $this->observacao = '';
         $this->showTroco = false;
@@ -186,22 +189,68 @@ class PdvComponent extends Component
     public function fecharModal()
     {
         $this->showPaymentModal = false;
-        $this->reset(['selectedPaymentType', 'valorPago', 'troco', 'observacao']);
+        $this->reset(['selectedPaymentType', 'valorPago', 'valorPagoRaw', 'troco', 'observacao']);
+        $this->showTroco = false;
     }
 
     public function updatedSelectedPaymentType($value)
     {
-        $tipo = TipoPagamento::find($value);
-        $this->showTroco = $tipo && $tipo->permite_troco;
+        // Se não tiver valor selecionado ou for vazio, reseta os campos
+        if (empty($value)) {
+            $this->showTroco = false;
+            $this->valorPago = '';
+            $this->troco = 0;
+            return;
+        }
 
-        if (!$this->showTroco && $tipo) {
+        $tipo = TipoPagamento::find($value);
+
+        if (!$tipo) {
+            $this->showTroco = false;
+            $this->valorPago = '';
+            $this->troco = 0;
+            return;
+        }
+
+        $this->showTroco = $tipo->permite_troco;
+
+        if ($this->showTroco) {
+            // Para dinheiro, não preenche automaticamente
+            $this->valorPago = '';
+            $this->troco = 0;
+        } else {
+            // Para outras formas de pagamento, preenche com o valor total
             $this->valorPago = 'R$ ' . number_format($this->total_venda, 2, ',', '.');
             $this->calcularTroco();
         }
     }
 
-    public function updatedValorPago()
+    public function updatedValorPago($value)
     {
+        $this->calcularTroco();
+    }
+
+    public function updatedValorPagoRaw($value)
+    {
+        $numbers = preg_replace('/\D/', '', $value);
+        $numbers = substr($numbers, 0, 9);
+
+        if (strlen($numbers) >= 3) {
+            $reais = substr($numbers, 0, -2);
+            $centavos = substr($numbers, -2);
+            $reais = ltrim($reais, '0');
+            if ($reais === '') $reais = '0';
+            $this->valorPago = number_format((float)($reais . '.' . $centavos), 2, ',', '.');
+        } elseif (strlen($numbers) > 0) {
+            if (strlen($numbers) == 1) {
+                $this->valorPago = "0,0{$numbers}";
+            } elseif (strlen($numbers) == 2) {
+                $this->valorPago = "0,{$numbers}";
+            }
+        } else {
+            $this->valorPago = '';
+        }
+
         $this->calcularTroco();
     }
 
@@ -238,30 +287,41 @@ class PdvComponent extends Component
         $tipoPagamento = TipoPagamento::find($this->selectedPaymentType);
         $valorPago = $this->parseMoney($this->valorPago);
 
-        if ($tipoPagamento->referencia != 'credit_account') {
+        if ($tipoPagamento->referencia != 'fiado') {
             if (!$valorPago || $valorPago <= 0) {
-                session()->flash('error', 'Informe o valor pago!');
-                return;
+                dd("Primeiro IF");
+                return session()->flash('error', 'Informe o valor pago!');
             }
 
             if ($valorPago < $this->total_venda) {
-                session()->flash('error', 'Valor pago é menor que o total da venda!');
-                return;
+                dd("Segundo IF");
+                return session()->flash('error', 'Valor pago é menor que o total da venda!');
             }
         }
 
         try {
-            if ($tipoPagamento->referencia == 'credit_account') {
-                $status = PedidoStatus::where('referencia', 'pending')->first();
+            if ($tipoPagamento->referencia == 'fiado') {
+                $status = PedidoStatus::where('referencia', 'pendente')->first();
                 $valorPagoFinal = 0;
                 $valorAPagar = $this->total_venda;
                 $trocoFinal = 0;
             } else {
-                $status = PedidoStatus::where('referencia', 'completed')->first();
+                $status = PedidoStatus::where('referencia', 'Finalizado')->first();
                 $valorPagoFinal = $valorPago;
                 $valorAPagar = 0;
                 $trocoFinal = $this->troco;
             }
+
+            dd([
+                'id_tipo_pagamento' => $this->selectedPaymentType,
+                'id_vendedor' => auth()->id(),
+                'id_pedido_status' => $status->id,
+                'valor_total' => $this->total_venda,
+                'valor_pago' => $valorPagoFinal,
+                'valor_a_pagar' => $valorAPagar,
+                'troco' => $trocoFinal,
+                'observacao' => empty($this->observacao) ? null : $this->observacao,
+            ]);
 
             $pedido = Pedido::create([
                 'id_tipo_pagamento' => $this->selectedPaymentType,
@@ -289,7 +349,7 @@ class PdvComponent extends Component
             $mensagem .= "💰 Total: R$ " . number_format($this->total_venda, 2, ',', '.') . "\n";
             $mensagem .= "💳 Forma: {$tipoPagamento->nome}";
 
-            if ($tipoPagamento->referencia == 'credit_account') {
+            if ($tipoPagamento->referencia == 'dinheiro') {
                 $mensagem .= "\n⏳ Status: Pendente - Cliente ficou devendo R$ " . number_format($valorAPagar, 2, ',', '.');
             } elseif ($trocoFinal > 0) {
                 $mensagem .= "\n💵 Troco: R$ " . number_format($trocoFinal, 2, ',', '.');
@@ -303,7 +363,6 @@ class PdvComponent extends Component
             $this->fecharModal();
 
             $this->dispatch('$refresh');
-
         } catch (\Exception $e) {
             session()->flash('error', 'Erro ao finalizar venda: ' . $e->getMessage());
         }
