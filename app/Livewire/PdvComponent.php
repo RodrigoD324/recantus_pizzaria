@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\Pessoa;
 use App\Models\Produto;
 use App\Models\Pedido;
 use App\Models\PedidoProduto;
@@ -29,6 +30,12 @@ class PdvComponent extends Component
     public $showTroco = false;
     public $valorPagoRaw = '';
 
+    public $clienteSearch = '';
+    public $clienteSearchResults = [];
+    public $clienteSelectedIndex = -1;
+    public $selectedCliente = null;
+    public $selectedClienteNome = '';
+
     public function mount()
     {
         $this->carregarTiposPagamento();
@@ -52,6 +59,106 @@ class PdvComponent extends Component
         } else {
             $this->searchResults = [];
             $this->selectedIndex = -1;
+        }
+    }
+
+    public function updatedClienteSearch()
+    {
+        if (strlen($this->clienteSearch) > 0) {
+            $searchTerm = strtolower($this->clienteSearch);
+
+            $this->clienteSearchResults = Pessoa::whereNull('pessoa.id_cancelamento')
+                ->leftJoin('contato', 'pessoa.id_contato', '=', 'contato.id')
+                ->where(function ($query) use ($searchTerm) {
+                    $query->whereRaw('LOWER(pessoa.nome) LIKE ?', ['%' . $searchTerm . '%'])
+                        ->orWhere('pessoa.cpf', 'like', "%{$searchTerm}%")
+                        ->orWhereRaw('LOWER(contato.celular) LIKE ?', ['%' . $searchTerm . '%']);
+                })
+                ->select('pessoa.id', 'pessoa.nome', 'pessoa.cpf', 'contato.celular')
+                ->limit(10)
+                ->get()
+                ->map(function ($pessoa) {
+                    return [
+                        'id' => $pessoa->id,
+                        'nome' => $pessoa->nome,
+                        'cpf' => $pessoa->cpf,
+                        'celular' => $pessoa->celular ?? 'N/A'
+                    ];
+                })
+                ->toArray();
+
+            $this->clienteSelectedIndex = 0;
+        } else {
+            $this->clienteSearchResults = [];
+            $this->clienteSelectedIndex = -1;
+        }
+    }
+
+    public function moveClienteSelectionUp()
+    {
+        if ($this->clienteSelectedIndex > 0) {
+            $this->clienteSelectedIndex--;
+        }
+    }
+
+    public function moveClienteSelectionDown()
+    {
+        if ($this->clienteSelectedIndex < count($this->clienteSearchResults) - 1) {
+            $this->clienteSelectedIndex++;
+        }
+    }
+
+    public function selectCliente($clienteId)
+    {
+        $cliente = Pessoa::with(['contato', 'endereco'])->find($clienteId);
+        if ($cliente) {
+            $this->selectedCliente = $cliente->id;
+            $this->selectedClienteNome = $cliente->nome;
+            $this->clienteSearch = '';
+            $this->clienteSearchResults = [];
+
+            $celular = $cliente->contato->celular ?? '';
+            $endereco = $cliente->endereco;
+
+            $enderecoCompleto = '';
+            if ($endereco) {
+                $enderecoCompleto = "Endereço: ";
+                $enderecoCompleto .= $endereco->logradouro ?: '';
+                if ($endereco->numero)
+                    $enderecoCompleto .= ", {$endereco->numero}";
+                if ($endereco->complemento)
+                    $enderecoCompleto .= " - {$endereco->complemento}";
+                if ($endereco->bairro)
+                    $enderecoCompleto .= "\nBairro: {$endereco->bairro}";
+                if ($endereco->cidade)
+                    $enderecoCompleto .= " - {$endereco->cidade}";
+                if ($endereco->estado)
+                    $enderecoCompleto .= "/{$endereco->estado}";
+                if ($endereco->cep)
+                    $enderecoCompleto .= "\nCEP: {$endereco->cep}";
+            }
+
+            // Preenche a observação com informações do cliente
+            $this->observacao = "Cliente: {$cliente->nome}\n";
+            $this->observacao .= "CPF: {$cliente->cpf}\n";
+            $this->observacao .= "Celular: {$celular}\n";
+            if ($enderecoCompleto) {
+                $this->observacao .= $enderecoCompleto;
+            }
+            $this->observacao;
+
+            $this->dispatch('showNotification', [
+                'type' => 'success',
+                'title' => 'Cliente selecionado',
+                'message' => "{$cliente->nome} foi adicionado à venda."
+            ]);
+        }
+    }
+
+    public function addSelectedCliente()
+    {
+        if ($this->clienteSelectedIndex >= 0 && isset($this->clienteSearchResults[$this->clienteSelectedIndex])) {
+            $this->selectCliente($this->clienteSearchResults[$this->clienteSelectedIndex]['id']);
         }
     }
 
@@ -108,6 +215,12 @@ class PdvComponent extends Component
         $this->search = '';
         $this->searchResults = [];
         $this->selectedIndex = -1;
+
+        $this->dispatch('showNotification', [
+            'type' => 'success',
+            'title' => 'Produto adicionado!',
+            'message' => "{$product->descricao}\nR$ " . number_format($product->valor, 2, ',', '.')
+        ]);
     }
 
     public function calculateTotal()
@@ -195,7 +308,6 @@ class PdvComponent extends Component
 
     public function updatedSelectedPaymentType($value)
     {
-        // Se não tiver valor selecionado ou for vazio, reseta os campos
         if (empty($value)) {
             $this->showTroco = false;
             $this->valorPago = '';
@@ -215,12 +327,13 @@ class PdvComponent extends Component
         $this->showTroco = $tipo->permite_troco;
 
         if ($this->showTroco) {
-            // Para dinheiro, não preenche automaticamente
-            $this->valorPago = '';
-            $this->troco = 0;
+            $valorTotalFormatado = number_format($this->total_venda, 2, ',', '.');
+            $this->valorPago = $valorTotalFormatado;
+            $this->valorPagoRaw = $valorTotalFormatado;
+            $this->calcularTroco();
         } else {
-            // Para outras formas de pagamento, preenche com o valor total
-            $this->valorPago = 'R$ ' . number_format($this->total_venda, 2, ',', '.');
+            $this->valorPago = number_format($this->total_venda, 2, ',', '.');
+            $this->valorPagoRaw = number_format($this->total_venda, 2, ',', '.');
             $this->calcularTroco();
         }
     }
@@ -239,8 +352,9 @@ class PdvComponent extends Component
             $reais = substr($numbers, 0, -2);
             $centavos = substr($numbers, -2);
             $reais = ltrim($reais, '0');
-            if ($reais === '') $reais = '0';
-            $this->valorPago = number_format((float)($reais . '.' . $centavos), 2, ',', '.');
+            if ($reais === '')
+                $reais = '0';
+            $this->valorPago = number_format((float) ($reais . '.' . $centavos), 2, ',', '.');
         } elseif (strlen($numbers) > 0) {
             if (strlen($numbers) == 1) {
                 $this->valorPago = "0,0{$numbers}";
@@ -275,13 +389,19 @@ class PdvComponent extends Component
     public function finalizarVenda()
     {
         if (count($this->cart) == 0) {
-            session()->flash('error', 'Carrinho vazio!');
-            return;
+            return $this->dispatch('showNotification', [
+                'type' => 'error',
+                'title' => 'Carrinho Vazio',
+                'message' => 'Adicione produtos antes de finalizar a venda.'
+            ]);
         }
 
         if (!$this->selectedPaymentType) {
-            session()->flash('error', 'Selecione uma forma de pagamento!');
-            return;
+            return $this->dispatch('showNotification', [
+                'type' => 'error',
+                'title' => 'Pagamento não selecionado',
+                'message' => 'Selecione uma forma de pagamento.'
+            ]);
         }
 
         $tipoPagamento = TipoPagamento::find($this->selectedPaymentType);
@@ -289,13 +409,19 @@ class PdvComponent extends Component
 
         if ($tipoPagamento->referencia != 'fiado') {
             if (!$valorPago || $valorPago <= 0) {
-                dd("Primeiro IF");
-                return session()->flash('error', 'Informe o valor pago!');
+                return $this->dispatch('showNotification', [
+                    'type' => 'error',
+                    'title' => 'Valor inválido',
+                    'message' => 'Informe o valor recebido.'
+                ]);
             }
-
             if ($valorPago < $this->total_venda) {
-                dd("Segundo IF");
-                return session()->flash('error', 'Valor pago é menor que o total da venda!');
+                $falta = number_format($this->total_venda - $valorPago, 2, ',', '.');
+                return $this->dispatch('showNotification', [
+                    'type' => 'warning',
+                    'title' => 'Valor insuficiente',
+                    'message' => "Faltam R$ {$falta} para completar o pagamento."
+                ]);
             }
         }
 
@@ -306,22 +432,11 @@ class PdvComponent extends Component
                 $valorAPagar = $this->total_venda;
                 $trocoFinal = 0;
             } else {
-                $status = PedidoStatus::where('referencia', 'Finalizado')->first();
+                $status = PedidoStatus::where('referencia', 'finalizado')->first();
                 $valorPagoFinal = $valorPago;
                 $valorAPagar = 0;
                 $trocoFinal = $this->troco;
             }
-
-            dd([
-                'id_tipo_pagamento' => $this->selectedPaymentType,
-                'id_vendedor' => auth()->id(),
-                'id_pedido_status' => $status->id,
-                'valor_total' => $this->total_venda,
-                'valor_pago' => $valorPagoFinal,
-                'valor_a_pagar' => $valorAPagar,
-                'troco' => $trocoFinal,
-                'observacao' => empty($this->observacao) ? null : $this->observacao,
-            ]);
 
             $pedido = Pedido::create([
                 'id_tipo_pagamento' => $this->selectedPaymentType,
@@ -331,7 +446,7 @@ class PdvComponent extends Component
                 'valor_pago' => $valorPagoFinal,
                 'valor_a_pagar' => $valorAPagar,
                 'troco' => $trocoFinal,
-                'observacao' => $this->observacao,
+                'observacao' => empty($this->observacao) ? null : $this->observacao,
             ]);
 
             foreach ($this->cart as $item) {
@@ -344,18 +459,23 @@ class PdvComponent extends Component
                 ]);
             }
 
-            $mensagem = "✅ Venda finalizada com sucesso!\n";
-            $mensagem .= "📋 Pedido #{$pedido->numero_pedido}\n";
-            $mensagem .= "💰 Total: R$ " . number_format($this->total_venda, 2, ',', '.') . "\n";
-            $mensagem .= "💳 Forma: {$tipoPagamento->nome}";
+            $mensagem = "Total: R$ " . number_format($this->total_venda, 2, ',', '.') . "\n";
+            $mensagem .= "Pagamento: {$tipoPagamento->nome}\n";
 
-            if ($tipoPagamento->referencia == 'dinheiro') {
-                $mensagem .= "\n⏳ Status: Pendente - Cliente ficou devendo R$ " . number_format($valorAPagar, 2, ',', '.');
+            if ($tipoPagamento->referencia == 'credit_account') {
+                $mensagem .= "Status: Pendente\n";
+                $mensagem .= "Débito: R$ " . number_format($valorAPagar, 2, ',', '.');
             } elseif ($trocoFinal > 0) {
-                $mensagem .= "\n💵 Troco: R$ " . number_format($trocoFinal, 2, ',', '.');
+                $mensagem .= "Troco: R$ " . number_format($trocoFinal, 2, ',', '.');
+            } else {
+                $mensagem .= "Pagamento confirmado";
             }
 
-            session()->flash('success', $mensagem);
+            $this->dispatch('showNotification', [
+                'type' => 'success',
+                'title' => "Venda Finalizada!",
+                'message' => "Pedido #{$pedido->numero_pedido}\n{$mensagem}"
+            ]);
 
             $this->cart = [];
             $this->total_venda = 0;
@@ -364,7 +484,12 @@ class PdvComponent extends Component
 
             $this->dispatch('$refresh');
         } catch (\Exception $e) {
-            session()->flash('error', 'Erro ao finalizar venda: ' . $e->getMessage());
+            $this->dispatch('showNotification', [
+                'type' => 'error',
+                'title' => '❌ Erro na venda',
+                'message' => 'Ocorreu um erro ao processar a venda. Tente novamente.'
+            ]);
+            \Log::error('Erro ao finalizar venda: ' . $e->getMessage());
         }
     }
 
