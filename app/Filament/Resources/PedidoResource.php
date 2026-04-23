@@ -13,6 +13,9 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\RepeatableEntry;
 
 class PedidoResource extends Resource
 {
@@ -32,6 +35,7 @@ class PedidoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordAction('ver')
             ->filters([
                 SelectFilter::make('status')
                     ->label('Status')
@@ -70,8 +74,6 @@ class PedidoResource extends Resource
                     ->label('Valor A Pagar'),
                 TextColumn::make('troco')
                     ->label('Troco'),
-                TextColumn::make('observacao')
-                    ->label('Observação'),
             ])
             ->actions([
                 Action::make('cancelar')
@@ -119,6 +121,33 @@ class PedidoResource extends Resource
                             ->success()
                             ->send();
                     }),
+                Action::make('ver')
+                    ->label('Detalhes')
+                    ->icon('heroicon-o-eye')
+                    ->modalHeading(fn(Pedido $record) => "Pedido #{$record->id}")
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->infolist([
+                        TextEntry::make('observacao')
+                            ->label('Observação')
+                            ->default('Sem observação'),
+
+                        RepeatableEntry::make('produtos')
+                            ->label('Produtos')
+                            ->schema([
+                                TextEntry::make('descricao')
+                                    ->label('Produto'),
+
+                                TextEntry::make('pivot.quantidade')
+                                    ->label('Quantidade'),
+
+                                TextEntry::make('pivot.preco_unitario')
+                                    ->label('Preço'),
+
+                                TextEntry::make('pivot.subtotal')
+                                    ->label('Subtotal'),
+                            ])
+                    ])
             ]);
     }
     public static function getRelations(): array
