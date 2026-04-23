@@ -36,6 +36,10 @@ class PdvComponent extends Component
     public $selectedCliente = null;
     public $selectedClienteNome = '';
 
+    public $showPrintModal = false;
+    public $printQty = 2;
+    public $lastPedido = null;
+
     public function mount()
     {
         $this->carregarTiposPagamento();
@@ -138,7 +142,6 @@ class PdvComponent extends Component
                     $enderecoCompleto .= "\nCEP: {$endereco->cep}";
             }
 
-            // Preenche a observação com informações do cliente
             $this->observacao = "Cliente: {$cliente->nome}\n";
             $this->observacao .= "CPF: {$cliente->cpf}\n";
             $this->observacao .= "Celular: {$celular}\n";
@@ -471,19 +474,22 @@ class PdvComponent extends Component
                 $mensagem .= "Pagamento confirmado";
             }
 
+            $this->cart = [];
+            $this->total_venda = 0;
+            $this->ultimo_preco = 0;
+            $this->fecharModal();
+
+            $this->abrirModalImpressao($pedido->id);
+
             $this->dispatch('showNotification', [
                 'type' => 'success',
                 'title' => "Venda Finalizada!",
                 'message' => "Pedido #{$pedido->numero_pedido}\n{$mensagem}"
             ]);
 
-            $this->cart = [];
-            $this->total_venda = 0;
-            $this->ultimo_preco = 0;
-            $this->fecharModal();
-
             $this->dispatch('$refresh');
         } catch (\Exception $e) {
+            dd($e);
             $this->dispatch('showNotification', [
                 'type' => 'error',
                 'title' => '❌ Erro na venda',
@@ -491,6 +497,120 @@ class PdvComponent extends Component
             ]);
             \Log::error('Erro ao finalizar venda: ' . $e->getMessage());
         }
+    }
+
+    public function abrirModalImpressao($pedidoId)
+    {
+        $this->lastPedido = Pedido::with(['itens.produto', 'vendedor'])->find($pedidoId);
+        $this->printQty = 2;
+        $this->showPrintModal = true;
+    }
+
+    public function emitirComanda()
+    {
+        if (!$this->lastPedido) {
+            return;
+        }
+
+        $pedido = $this->lastPedido;
+        $itens = $pedido->itens;
+
+        $html = '
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Comanda #' . $pedido->numero_pedido . '</title>
+                <style>
+                    body { font-family: monospace; padding: 20px; margin: 0; }
+                    .comanda { max-width: 300px; margin: 0 auto; }
+                    .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 15px; }
+                    .numero { font-size: 28px; font-weight: bold; margin: 5px 0; }
+                    .item { display: flex; gap: 10px; margin: 8px 0; padding: 5px 0; border-bottom: 1px dotted #ccc; }
+                    .qtd { font-weight: bold; min-width: 40px; font-size: 16px; }
+                    .nome { flex: 1; text-transform: uppercase; font-weight: bold; }
+                    .footer { text-align: center; margin-top: 20px; padding-top: 10px; border-top: 2px dashed #000; font-size: 10px; }
+                    @media print { .no-print { display: none; } button { display: none; } }
+                </style>
+            </head>
+            <body>
+                <div class="comanda">
+                    <div class="header">
+                        <h2>🍕 PIZZARIA RECANTO</h2>
+                        <div class="numero">#' . $pedido->numero_pedido . '</div>
+                        <div>' . date('d/m/Y H:i') . '</div>
+                    </div>
+                    
+                    <div class="info">
+                        <div><strong>Cliente:</strong> ' . $this->extrairCliente($pedido->observacao) . '</div>
+                        <div><strong>Entregador:</strong> ' . ($pedido->vendedor->name ?? 'Sistema') . '</div>
+                    </div>
+                    
+                    <hr>
+                    <div style="font-weight: bold; margin: 10px 0;">ITENS DO PEDIDO:</div>';
+
+                    foreach ($itens as $item) {
+                        $html .= '
+                    <div class="item">
+                        <div class="qtd">' . $item->quantidade . 'x</div>
+                        <div class="nome">' . strtoupper($item->produto->descricao) . '</div>
+                    </div>';
+                    }
+
+                    $html .= '
+                    <div class="footer">
+                        Comanda Interna - Cozinha<br>
+                        Emitida em ' . date('d/m/Y H:i:s') . '
+                    </div>
+                </div>
+                
+                <div class="no-print" style="text-align:center; margin-top:20px;">
+                    <button onclick="window.print()" style="padding:10px 20px; background:#F97316; color:white; border:none; border-radius:5px; cursor:pointer;">🖨️ Imprimir</button>
+                    <button onclick="window.close()" style="padding:10px 20px; background:#666; color:white; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">✕ Fechar</button>
+                </div>
+                <script>if(location.search.includes("print=true")) setTimeout(() => window.print(), 500);</script>
+            </body>
+            </html>';
+
+        $htmlEscaped = addslashes($html);
+
+        if ($this->printQty > 1) {
+            $script = "<script>";
+            for ($i = 0; $i < $this->printQty; $i++) {
+                $script .= "setTimeout(() => { var w = window.open(); w.document.write('{$htmlEscaped}'); w.document.close(); w.print(); }, " . ($i * 500) . ");";
+            }
+            $script .= "setTimeout(() => window.close(), 3000);</script>";
+
+            $this->fecharModalImpressao();
+
+            echo $script;
+            exit;
+        }
+
+        $this->fecharModalImpressao();
+
+        return "<script>
+                    var w = window.open();
+                    w.document.write('{$htmlEscaped}');
+                    w.document.close();
+                    w.print();
+                    setTimeout(() => w.close(), 3000);
+                </script>";
+    }
+
+    private function extrairCliente($observacao)
+    {
+        if (empty($observacao)) return 'Consumidor';
+        if (preg_match('/Cliente:\s*(.+)/', $observacao, $match)) {
+            return trim($match[1]);
+        }
+        return 'Consumidor';
+    }
+    public function fecharModalImpressao()
+    {
+        $this->showPrintModal = false;
+        $this->printQty = 2;
+        $this->lastPedido = null;
     }
 
     public function render()
