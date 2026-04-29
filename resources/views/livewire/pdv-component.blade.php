@@ -1,5 +1,30 @@
 <div>
     <div class="grid grid-cols-12 gap-4" x-data="{ showResults: false }">
+        <div class="col-span-12 mb-2 flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-3 w-3 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full {{ $isPdvAberto ? 'bg-green-400' : 'bg-red-400' }} opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 {{ $isPdvAberto ? 'bg-green-500' : 'bg-red-500' }}"></span>
+                    </span>
+                    <span class="font-bold text-sm uppercase tracking-wider {{ $isPdvAberto ? 'text-green-600' : 'text-red-600' }}">
+                        {{ $isPdvAberto ? 'Caixa Aberto' : 'Caixa Fechado' }}
+                    </span>
+                </div>
+            </div>
+            <div>
+                @if($isPdvAberto)
+                    <button wire:click="abrirOperacaoPdv('fechamento')" class="bg-red-100 text-red-700 px-4 py-1.5 rounded-lg font-bold text-xs uppercase hover:bg-red-200 transition">
+                        Encerrar Caixa
+                    </button>
+                @else
+                    <button wire:click="abrirOperacaoPdv('abertura')" class="bg-green-100 text-green-700 px-4 py-1.5 rounded-lg font-bold text-xs uppercase hover:bg-green-200 transition">
+                        Abrir Caixa
+                    </button>
+                @endif
+            </div>
+        </div>
+
         <div class="col-span-8">
             <div class="mb-4 relative">
                 <input type="text" wire:model.live="search" wire:keydown.arrow-up="moveSelectionUp"
@@ -73,7 +98,7 @@
                                 @else
                                 <div class="flex items-center justify-center gap-2">
                                     <button type="button" wire:click="decrementQty({{ $index }})"
-                                        class="inline-flex items-center justify-center w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full transition">
+                                        class="inline-flex items-center justify-center w-8 h-8 bg-red-500 hover:bg-red-600 text-black rounded-full transition">
                                         -
                                     </button>
                                     <span wire:click="startEditQty({{ $index }})"
@@ -82,7 +107,7 @@
                                         {{ $item['qty'] }}
                                     </span>
                                     <button type="button" wire:click="incrementQty({{ $index }})"
-                                        class="inline-flex items-center justify-center w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full transition">
+                                        class="inline-flex items-center justify-center w-8 h-8 bg-green-500 hover:bg-green-600 text-black rounded-full transition">
                                         +
                                     </button>
                                 </div>
@@ -295,24 +320,166 @@
 
     <!-- Modal de Impressão -->
     @if($showPrintModal)
-    <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div class="bg-white rounded-xl p-6 max-w-sm w-full">
-            <h2 class="text-xl font-bold mb-4">🖨️ Imprimir Comanda</h2>
+    <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 transition-all duration-300" 
+         x-data="{ show: @entangle('showPrintModal') }" x-show="show"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100">
+        
+        <!-- Backdrop com fade escuro e blur -->
+        <div class="fixed inset-0 bg-black/80 backdrop-blur-md"></div>
 
-            <div class="mb-4">
-                <label class="block text-sm mb-2">Quantidade de cópias</label>
-                <div class="flex items-center gap-3">
-                    <button wire:click="$set('printQty', {{ $printQty > 1 ? $printQty - 1 : 1 }})" class="px-4 py-2 bg-gray-300 rounded">-</button>
-                    <span class="text-xl font-bold w-12 text-center">{{ $printQty }}</span>
-                    <button wire:click="$set('printQty', {{ $printQty < 10 ? $printQty + 1 : 10 }})" class="px-4 py-2 bg-gray-300 rounded">+</button>
+        <!-- Conteúdo do Modal -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-sm w-full z-10 overflow-hidden transform transition-all border border-gray-100 dark:border-gray-700"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="scale-95 translate-y-4 opacity-0"
+             x-transition:enter-end="scale-100 translate-y-0 opacity-100">
+            
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <span class="text-2xl">🖨️</span> Imprimir Comanda
+                    </h2>
+                    <button wire:click="fecharModalImpressao" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
                 </div>
-            </div>
 
-            <div class="flex gap-3">
-                <button wire:click="fecharModalImpressao" class="flex-1 bg-gray-500 text-white py-2 rounded">Cancelar</button>
-                <button wire:click="emitirComanda" class="flex-1 bg-orange-500 text-white py-2 rounded">🖨️ Imprimir</button>
+                <div class="space-y-6">
+                    <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl">
+                        <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 text-center uppercase tracking-wider">Quantidade de cópias</label>
+                        <div class="flex items-center justify-center gap-6">
+                            <button wire:click="$set('printQty', {{ $printQty > 1 ? $printQty - 1 : 1 }})" 
+                                    style="background-color: #E5E7EB !important; color: #1F2937 !important;"
+                                    class="w-12 h-12 flex items-center justify-center rounded-full shadow-sm hover:bg-gray-300 transition-all active:scale-90 border border-gray-300">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
+                            </button>
+                            
+                            <span class="text-3xl font-black text-orange-500 w-12 text-center tabular-nums">{{ $printQty }}</span>
+                            
+                            <button wire:click="$set('printQty', {{ $printQty < 10 ? $printQty + 1 : 10 }})" 
+                                    style="background-color: #E5E7EB !important; color: #1F2937 !important;"
+                                    class="w-12 h-12 flex items-center justify-center rounded-full shadow-sm hover:bg-gray-300 transition-all active:scale-90 border border-gray-300">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-3">
+                        <button wire:click="emitirComanda" 
+                                style="background-color: #F97316 !important; color: white !important;"
+                                class="w-full font-bold py-4 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                            <span>🖨️</span> CONFIRMAR IMPRESSÃO
+                        </button>
+                        
+                        <button wire:click="fecharModalImpressao" 
+                                style="background-color: #6B7280 !important; color: white !important;"
+                                class="w-full font-semibold py-3 rounded-xl transition-all active:scale-[0.98]">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     @endif
+    
+    <!-- Modal Operação PDV (Abertura/Fechamento) -->
+    @if($showOperacaoModal)
+    <div class="fixed inset-0 z-[70] flex items-center justify-center p-4 shadow-2xl" 
+         style="background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px);">
+        
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 dark:border-gray-700">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">
+                        {{ $operacaoTipo == 'abertura' ? 'Abrir Caixa' : 'Encerrar Caixa' }}
+                    </h2>
+                    <button wire:click="$set('showOperacaoModal', false)" class="text-gray-400 hover:text-gray-600 transition text-2xl">×</button>
+                </div>
+
+                <div class="space-y-5">
+                    <div class="bg-indigo-50 dark:bg-indigo-900/30 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                        <label class="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-2 uppercase tracking-widest">
+                            Valor em Dinheiro
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400 font-bold text-xl">R$</span>
+                            <input type="text" wire:model.live="operacaoValor" 
+                                placeholder="0,00"
+                                class="w-full pl-12 pr-4 py-4 rounded-xl border-none bg-white dark:bg-gray-900 shadow-inner text-2xl font-bold text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                                x-data="{}" 
+                                x-on:input="
+                                    let numbers = $el.value.replace(/\D/g, '').slice(0, 9);
+                                    numbers = numbers.padStart(3, '0');
+                                    let reais = numbers.slice(0, -2);
+                                    let centavos = numbers.slice(-2);
+                                    reais = reais.replace(/^0+(\d)/, '$1');
+                                    let formatted = Number(reais).toLocaleString('pt-BR') + ',' + centavos;
+                                    if (reais === '' || reais === '0') formatted = '0,' + centavos;
+                                    $el.value = formatted;
+                                    $wire.set('operacaoValor', formatted);
+                                ">
+                        </div>
+                        @error('operacaoValor') <span class="text-red-500 text-xs mt-1 font-bold">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest">Observações (Opcional)</label>
+                        <textarea wire:model="operacaoObservacao" rows="3" 
+                            class="w-full rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
+                            placeholder="Alguma observação importante?"></textarea>
+                    </div>
+
+                    <div class="flex gap-4 pt-2">
+                        <button wire:click="$set('showOperacaoModal', false)" 
+                            class="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold py-4 rounded-xl hover:bg-gray-200 transition uppercase tracking-wider text-sm">
+                            Cancelar
+                        </button>
+                        <button wire:click="confirmarOperacaoPdv" 
+                            class="flex-1 bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none transition uppercase tracking-wider text-sm">
+                            Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <script>
+        document.addEventListener('livewire:init', () => {
+           Livewire.on('print-order', (event) => {
+               const data = Array.isArray(event) ? event[0] : event;
+               const html = data.html;
+               const qty = data.qty || 1;
+               
+               console.log('Imprimindo...', qty, 'cópias');
+               
+               for (let i = 0; i < qty; i++) {
+                   setTimeout(() => {
+                       const w = window.open('', '_blank', 'width=800,height=600');
+                       w.document.write(html);
+                       w.document.close();
+                       
+                       w.onload = function() {
+                           w.focus();
+                           w.print();
+                           setTimeout(() => w.close(), 1000);
+                       };
+                       
+                       // Fallback se o onload não disparar (alguns browsers com document.write)
+                       setTimeout(() => {
+                           if (!w.closed) {
+                               w.focus();
+                               w.print();
+                               setTimeout(() => w.close(), 1000);
+                           }
+                       }, 1000);
+                       
+                   }, i * 1500);
+               }
+           });
+        });
+    </script>
 </div>

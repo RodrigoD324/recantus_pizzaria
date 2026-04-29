@@ -2,6 +2,9 @@
 
 namespace App\Livewire;
 
+use App\Models\OperacaoPdv;
+use App\Models\OperacaoPdvTipo;
+use App\Traits\HasPrintableComanda;
 use App\Models\Pessoa;
 use App\Models\Produto;
 use App\Models\Pedido;
@@ -12,6 +15,14 @@ use Livewire\Component;
 
 class PdvComponent extends Component
 {
+    use HasPrintableComanda;
+    
+    public $isPdvAberto = false;
+    public $showOperacaoModal = false;
+    public $operacaoValor = '';
+    public $operacaoObservacao = '';
+    public $operacaoTipo = '';
+
     public $cart = [];
     public $total_venda = 0;
     public $ultimo_preco = 0;
@@ -42,6 +53,7 @@ class PdvComponent extends Component
 
     public function mount()
     {
+        $this->isPdvAberto = OperacaoPdv::isAberto();
         $this->carregarTiposPagamento();
     }
 
@@ -188,6 +200,16 @@ class PdvComponent extends Component
 
     public function addToCart($productId)
     {
+        if (!$this->isPdvAberto) {
+            $this->showOperacaoModal = true;
+            $this->operacaoTipo = 'abertura';
+            return $this->dispatch('showNotification', [
+                'type' => 'warning',
+                'title' => 'Caixa Fechado',
+                'message' => 'Você precisa abrir o caixa antes de realizar vendas.'
+            ]);
+        }
+        
         $product = Produto::find($productId);
 
         if (!$product)
@@ -288,6 +310,12 @@ class PdvComponent extends Component
 
     public function abrirModalPagamento()
     {
+        if (!$this->isPdvAberto) {
+            $this->showOperacaoModal = true;
+            $this->operacaoTipo = 'abertura';
+            return;
+        }
+
         if (count($this->cart) == 0) {
             session()->flash('error', 'Carrinho vazio!');
             return;
@@ -512,105 +540,61 @@ class PdvComponent extends Component
             return;
         }
 
-        $pedido = $this->lastPedido;
-        $itens = $pedido->itens;
-
-        $html = '
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Comanda #' . $pedido->numero_pedido . '</title>
-                <style>
-                    body { font-family: monospace; padding: 20px; margin: 0; }
-                    .comanda { max-width: 300px; margin: 0 auto; }
-                    .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 15px; }
-                    .numero { font-size: 28px; font-weight: bold; margin: 5px 0; }
-                    .item { display: flex; gap: 10px; margin: 8px 0; padding: 5px 0; border-bottom: 1px dotted #ccc; }
-                    .qtd { font-weight: bold; min-width: 40px; font-size: 16px; }
-                    .nome { flex: 1; text-transform: uppercase; font-weight: bold; }
-                    .footer { text-align: center; margin-top: 20px; padding-top: 10px; border-top: 2px dashed #000; font-size: 10px; }
-                    @media print { .no-print { display: none; } button { display: none; } }
-                </style>
-            </head>
-            <body>
-                <div class="comanda">
-                    <div class="header">
-                        <h2>🍕 PIZZARIA RECANTO</h2>
-                        <div class="numero">#' . $pedido->numero_pedido . '</div>
-                        <div>' . date('d/m/Y H:i') . '</div>
-                    </div>
-                    
-                    <div class="info">
-                        <div><strong>Cliente:</strong> ' . $this->extrairCliente($pedido->observacao) . '</div>
-                        <div><strong>Entregador:</strong> ' . ($pedido->vendedor->name ?? 'Sistema') . '</div>
-                    </div>
-                    
-                    <hr>
-                    <div style="font-weight: bold; margin: 10px 0;">ITENS DO PEDIDO:</div>';
-
-                    foreach ($itens as $item) {
-                        $html .= '
-                    <div class="item">
-                        <div class="qtd">' . $item->quantidade . 'x</div>
-                        <div class="nome">' . strtoupper($item->produto->descricao) . '</div>
-                    </div>';
-                    }
-
-                    $html .= '
-                    <div class="footer">
-                        Comanda Interna - Cozinha<br>
-                        Emitida em ' . date('d/m/Y H:i:s') . '
-                    </div>
-                </div>
-                
-                <div class="no-print" style="text-align:center; margin-top:20px;">
-                    <button onclick="window.print()" style="padding:10px 20px; background:#F97316; color:white; border:none; border-radius:5px; cursor:pointer;">🖨️ Imprimir</button>
-                    <button onclick="window.close()" style="padding:10px 20px; background:#666; color:white; border:none; border-radius:5px; cursor:pointer; margin-left:10px;">✕ Fechar</button>
-                </div>
-                <script>if(location.search.includes("print=true")) setTimeout(() => window.print(), 500);</script>
-            </body>
-            </html>';
-
-        $htmlEscaped = addslashes($html);
-
-        if ($this->printQty > 1) {
-            $script = "<script>";
-            for ($i = 0; $i < $this->printQty; $i++) {
-                $script .= "setTimeout(() => { var w = window.open(); w.document.write('{$htmlEscaped}'); w.document.close(); w.print(); }, " . ($i * 500) . ");";
-            }
-            $script .= "setTimeout(() => window.close(), 3000);</script>";
-
-            $this->fecharModalImpressao();
-
-            echo $script;
-            exit;
-        }
+        $html = $this->generateComandaHtml($this->lastPedido);
 
         $this->fecharModalImpressao();
 
-        return "<script>
-                    var w = window.open();
-                    w.document.write('{$htmlEscaped}');
-                    w.document.close();
-                    w.print();
-                    setTimeout(() => w.close(), 3000);
-                </script>";
+        $this->dispatch('print-order', [
+            'html' => $html,
+            'qty' => $this->printQty
+        ]);
     }
 
-    private function extrairCliente($observacao)
-    {
-        if (empty($observacao)) return 'Consumidor';
-        if (preg_match('/Cliente:\s*(.+)/', $observacao, $match)) {
-            return trim($match[1]);
-        }
-        return 'Consumidor';
-    }
     public function fecharModalImpressao()
     {
         $this->showPrintModal = false;
         $this->printQty = 2;
         $this->lastPedido = null;
+    }
+
+    public function abrirOperacaoPdv($tipo)
+    {
+        $this->operacaoTipo = $tipo;
+        $this->operacaoValor = '';
+        $this->operacaoObservacao = '';
+        $this->showOperacaoModal = true;
+    }
+
+    public function confirmarOperacaoPdv()
+    {
+        $this->validate([
+            'operacaoValor' => 'required',
+        ]);
+
+        $valor = $this->parseMoney($this->operacaoValor);
+        $tipoObj = OperacaoPdvTipo::where('referencia', $this->operacaoTipo)->first();
+
+        OperacaoPdv::create([
+            'id_usuario' => auth()->id(),
+            'id_operacao_pdv_tipo' => $tipoObj->id,
+            'valor' => $valor,
+            'observacao' => $this->operacaoObservacao,
+        ]);
+
+        $this->isPdvAberto = OperacaoPdv::isAberto();
+        $this->showOperacaoModal = false;
+
+        $msg = $this->operacaoTipo == 'abertura' ? 'Caixa aberto com sucesso!' : 'Caixa fechado com sucesso!';
+        
+        $this->dispatch('showNotification', [
+            'type' => 'success',
+            'title' => 'Operação Realizada',
+            'message' => $msg
+        ]);
+
+        if ($this->operacaoTipo == 'fechamento') {
+            $this->reset(['cart', 'total_venda', 'ultimo_preco']);
+        }
     }
 
     public function render()

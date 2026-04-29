@@ -36,6 +36,7 @@ class PedidoResource extends Resource
     {
         return $table
             ->recordAction('ver')
+            ->defaultSort('id', 'desc')
             ->filters([
                 SelectFilter::make('status')
                     ->label('Status')
@@ -55,6 +56,10 @@ class PedidoResource extends Resource
                 TextColumn::make('id')
                     ->label('Número')
                     ->searchable()
+                    ->sortable(),
+                TextColumn::make('created_at')
+                    ->label('Data/Hora')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable(),
                 TextColumn::make('tipoPagamento.nome')
                     ->label('Forma de Pagamento')
@@ -76,6 +81,40 @@ class PedidoResource extends Resource
                     ->label('Troco'),
             ])
             ->actions([
+                Action::make('imprimir')
+                    ->label('Imprimir')
+                    ->icon('heroicon-o-printer')
+                    ->color('warning')
+                    ->url(fn (Pedido $record): string => route('pedidos.imprimir', ['pedido' => $record, 'print' => 'true']))
+                    ->openUrlInNewTab(),
+                Action::make('ver')
+                    ->extraAttributes(['style' => 'width: 0; height: 0; padding: 0; margin: 0; border: none; overflow: hidden; position: absolute; opacity: 0; pointer-events: none;'])
+                    ->label('Detalhes')
+                    ->icon('heroicon-o-eye')
+                    ->modalHeading(fn(Pedido $record) => "Pedido #{$record->id}")
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->infolist([
+                        TextEntry::make('observacao')
+                            ->label('Observação')
+                            ->default('Sem observação'),
+
+                        RepeatableEntry::make('produtos')
+                            ->label('Produtos')
+                            ->schema([
+                                TextEntry::make('descricao')
+                                    ->label('Produto'),
+
+                                TextEntry::make('pivot.quantidade')
+                                    ->label('Quantidade'),
+
+                                TextEntry::make('pivot.preco_unitario')
+                                    ->label('Preço'),
+
+                                TextEntry::make('pivot.subtotal')
+                                    ->label('Subtotal'),
+                            ])
+                    ]),
                 Action::make('cancelar')
                     ->label('Desativar')
                     ->icon('heroicon-o-trash')
@@ -121,33 +160,6 @@ class PedidoResource extends Resource
                             ->success()
                             ->send();
                     }),
-                Action::make('ver')
-                    ->label('Detalhes')
-                    ->icon('heroicon-o-eye')
-                    ->modalHeading(fn(Pedido $record) => "Pedido #{$record->id}")
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Fechar')
-                    ->infolist([
-                        TextEntry::make('observacao')
-                            ->label('Observação')
-                            ->default('Sem observação'),
-
-                        RepeatableEntry::make('produtos')
-                            ->label('Produtos')
-                            ->schema([
-                                TextEntry::make('descricao')
-                                    ->label('Produto'),
-
-                                TextEntry::make('pivot.quantidade')
-                                    ->label('Quantidade'),
-
-                                TextEntry::make('pivot.preco_unitario')
-                                    ->label('Preço'),
-
-                                TextEntry::make('pivot.subtotal')
-                                    ->label('Subtotal'),
-                            ])
-                    ])
             ]);
     }
     public static function getRelations(): array
